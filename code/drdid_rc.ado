@@ -12,12 +12,12 @@
 capture program drop _all
 
 program define drdid, eclass sortpreserve
-	syntax varlist(fv ) [if] [in], [ivar(varname)] time(varname) TReatment(varname) ///
+	syntax varlist(fv ) [if] [in] [iw], [ivar(varname)] time(varname) TReatment(varname) ///
 	[noisily drimp dripw reg sipw tipw ipwra all]  
 	local 00 `0'
 	marksample touse
 	markout `touse' `ivar' `time' `treatment'
-	
+
 	** Which option 
 	if "`drimp'`dripw'`reg'`sipw'`ipwra'`all'"=="" {
 	    display "No estimator selected. Using default -drimp-"
@@ -44,6 +44,19 @@ program define drdid, eclass sortpreserve
 		qui:egen byte `tmt'=group(`time') if `touse'
 		qui:replace `tmt'=`tmt'-1	    
 	}
+	** Sainity Check Weights
+	** Weights
+	if "`exp'"=="" {
+	    tempname wgt
+		gen byte `wgt'=1
+	}
+	else {
+		tempvar wgt
+		gen double `wgt'`exp'
+		sum `wgt' if `touse' & `tmt'==0, meanonly
+		replace `wgt'=`wgt'/r(mean)
+	}
+	
 	
 	drop `vals'
 	qui:bysort `touse' `treatment': gen byte `vals' = (_n == 1) * `touse'
@@ -63,39 +76,39 @@ program define drdid, eclass sortpreserve
 	qui:bysort `touse' `ivar' (`time'):gen byte `tag'=_n if `touse'
 	** Default will be IPT 
  	if "`drimp'"!="" {
-		drdid_dript , touse(`touse') tmt(`tmt') trt(`trt') y(`y') xvar(`xvar') `isily' ivar(`ivar') tag(`tag')
+		drdid_dript , touse(`touse') tmt(`tmt') trt(`trt') y(`y') xvar(`xvar') `isily' ivar(`ivar') tag(`tag') weight(`wgt')
 	}
 	else if "`dripw'"!="" {
 		// DR ipw asjad
-		drdid_dripw , touse(`touse') tmt(`tmt') trt(`trt') y(`y') xvar(`xvar') `isily' ivar(`ivar') tag(`tag')
+		drdid_dripw , touse(`touse') tmt(`tmt') trt(`trt') y(`y') xvar(`xvar') `isily' ivar(`ivar') tag(`tag') weight(`wgt')
 	}
 	else if "`tipw'"!="" {
 		// abadies Done
-		drdid_tipw , touse(`touse') tmt(`tmt') trt(`trt') y(`y') xvar(`xvar') `isily' ivar(`ivar') tag(`tag')
+		drdid_tipw , touse(`touse') tmt(`tmt') trt(`trt') y(`y') xvar(`xvar') `isily' ivar(`ivar') tag(`tag') weight(`wgt')
 	}
 	else if "`reg'"!="" {
-		drdid_reg , touse(`touse') tmt(`tmt') trt(`trt') y(`y') xvar(`xvar') `isily' ivar(`ivar') tag(`tag')
+		drdid_reg , touse(`touse') tmt(`tmt') trt(`trt') y(`y') xvar(`xvar') `isily' ivar(`ivar') tag(`tag') weight(`wgt')
 	}
 	else if "`sipw'"!="" {
-		drdid_sipw , touse(`touse') tmt(`tmt') trt(`trt') y(`y') xvar(`xvar') `isily' ivar(`ivar') tag(`tag')
+		drdid_sipw , touse(`touse') tmt(`tmt') trt(`trt') y(`y') xvar(`xvar') `isily' ivar(`ivar') tag(`tag') weight(`wgt')
 	}
 	else if "`ipwra'"!="" {
 		//only one without modeling
-		drdid_sipwra , touse(`touse') tmt(`tmt') trt(`trt') y(`y') xvar(`xvar') `isily' ivar(`ivar') tag(`tag')
+		drdid_sipwra , touse(`touse') tmt(`tmt') trt(`trt') y(`y') xvar(`xvar') `isily' ivar(`ivar') tag(`tag') weight(`wgt')
 	}
 	else if "`all'"!="" {
-	    display "DRDID with IPT"
-	    drdid_dript , touse(`touse') tmt(`tmt') trt(`trt') y(`y') xvar(`xvar') `isily' ivar(`ivar') tag(`tag')
-		display "DRDID with IPW"
-	    drdid_dripw , touse(`touse') tmt(`tmt') trt(`trt') y(`y') xvar(`xvar') `isily' ivar(`ivar') tag(`tag')
-		display "DRDID with Abadies IPW"
-	    drdid_tipw , touse(`touse') tmt(`tmt') trt(`trt') y(`y') xvar(`xvar') `isily' ivar(`ivar') tag(`tag')
-		display "DID with OR"
-		drdid_reg , touse(`touse') tmt(`tmt') trt(`trt') y(`y') xvar(`xvar') `isily' ivar(`ivar') tag(`tag')
-		display "DID with Standard IPW"
-		drdid_sipw , touse(`touse') tmt(`tmt') trt(`trt') y(`y') xvar(`xvar') `isily' ivar(`ivar') tag(`tag')
+	    
+	    drdid_dript , touse(`touse') tmt(`tmt') trt(`trt') y(`y') xvar(`xvar') `isily' ivar(`ivar') tag(`tag') weight(`wgt')
+		 
+	    drdid_dripw , touse(`touse') tmt(`tmt') trt(`trt') y(`y') xvar(`xvar') `isily' ivar(`ivar') tag(`tag') weight(`wgt')
+		
+	    drdid_tipw , touse(`touse') tmt(`tmt') trt(`trt') y(`y') xvar(`xvar') `isily' ivar(`ivar') tag(`tag') weight(`wgt')
+		
+		drdid_reg , touse(`touse') tmt(`tmt') trt(`trt') y(`y') xvar(`xvar') `isily' ivar(`ivar') tag(`tag') weight(`wgt')
+		
+		drdid_sipw , touse(`touse') tmt(`tmt') trt(`trt') y(`y') xvar(`xvar') `isily' ivar(`ivar') tag(`tag') weight(`wgt')
 		display "NOT DRDID: DID with Standard IPW with RA"
-		drdid_sipwra , touse(`touse') tmt(`tmt') trt(`trt') y(`y') xvar(`xvar') `isily' ivar(`ivar') tag(`tag')
+		drdid_sipwra , touse(`touse') tmt(`tmt') trt(`trt') y(`y') xvar(`xvar') `isily' ivar(`ivar') tag(`tag') weight(`wgt')
 	}
 	
 	ereturn local cmd drdid
@@ -103,14 +116,14 @@ program define drdid, eclass sortpreserve
 
 end
 
- 
+**#
 program define drdid_tipw, eclass
-syntax, touse(str) trt(str) y(str) [xvar(str)] [noisily] [ivar(str)] [tag(str)] tmt(str)
+syntax, touse(str) trt(str) y(str) [xvar(str)] [noisily] [ivar(str)] [tag(str)] tmt(str) [weight(str)]
 	** PS
 	if "`ivar'"!="" {
 	    *display "Estimating IPW logit"
 		qui {		
-			`isily' logit `trt' `xvar' if `touse'
+			`isily' logit `trt' `xvar' if `touse' [iw = `weight']
 			tempvar psxb
 			predict double `psxb', xb
 			tempname psb psV
@@ -133,9 +146,9 @@ syntax, touse(str) trt(str) y(str) [xvar(str)] [noisily] [ivar(str)] [tag(str)] 
 			gen double __att__=.
 		}
 		*display "Estimating ATT"
-		qui {
+		  {
 		    tempname b V
-			mata:drdid_tipw("__dy__","`xvar'","`xb'","`psb'","`psV'","`psxb'","`trt'","`tmt'","`touse'","__att__","`b'","`V'")
+			mata:drdid_tipw("__dy__","`xvar'","`xb'","`psb' ","`psV' ","`psxb'","`trt'","`tmt'","`touse'","__att__","`b'","`V'","`weight'")
 			matrix colname `b'=__att__
 			matrix colname `V'=__att__
 			matrix rowname `V'=__att__
@@ -147,7 +160,8 @@ syntax, touse(str) trt(str) y(str) [xvar(str)] [noisily] [ivar(str)] [tag(str)] 
 			ereturn matrix ipwb `psb'
 			ereturn matrix ipwV `psV'
 		}
-		display "Traditional IPW estimator. Abadie (2005)"
+		display "DiD with IPW"
+		display "Abadie (2005) inverse probability weighting DiD estimator"
 		ereturn display
 	}
 	else if "`ivar'"=="" {
@@ -159,12 +173,12 @@ end
 ** can be more efficient
 **#
 program define drdid_dripw, eclass
-syntax, touse(str) trt(str) y(str) [xvar(str)] [noisily] [ivar(str)] [tag(str)] tmt(str)
+syntax, touse(str) trt(str) y(str) [xvar(str)] [noisily] [ivar(str)] [tag(str)] tmt(str) [weight(str)]
 	** PS
 	if "`ivar'"!="" {
 	    *display "Estimating IPW logit"
 		qui {		
-			`isily' logit `trt' `xvar' if `touse'
+			`isily' logit `trt' `xvar' if `touse' [iw = `weight']
 			tempvar psxb
 			predict double `psxb', xb
 			tempname psb psV
@@ -177,7 +191,7 @@ syntax, touse(str) trt(str) y(str) [xvar(str)] [noisily] [ivar(str)] [tag(str)] 
 		}
 		*display "Estimating Counterfactual Outcome"	
 		qui {
-			`isily' reg __dy__ `xvar' if `trt'==0 
+			`isily' reg __dy__ `xvar' if `trt'==0  [iw = `weight']
 			tempname regb regV
 			matrix `regb'=e(b)
 			matrix `regV'=e(V)
@@ -189,7 +203,7 @@ syntax, touse(str) trt(str) y(str) [xvar(str)] [noisily] [ivar(str)] [tag(str)] 
 		*display "Estimating ATT"
 		qui {
 		    tempname b V
-			mata:drdid_ipw("__dy__","`xvar'","`xb'","`psb'","`psV'","`psxb'","`trt'","`tmt'","`touse'","__att__","`b'","`V'")
+			mata:drdid_ipw("__dy__","`xvar'","`xb'","`psb'","`psV'","`psxb'","`trt'","`tmt'","`touse'","__att__","`b'","`V'","`weight'")
 			matrix colname `b'=__att__
 			matrix colname `V'=__att__
 			matrix rowname `V'=__att__
@@ -204,7 +218,8 @@ syntax, touse(str) trt(str) y(str) [xvar(str)] [noisily] [ivar(str)] [tag(str)] 
 			ereturn matrix regV `regV'
 
 		}
-		display "Double Robust IPW estimator"
+		display "DR DiD with IPW and OLS"
+		display "Sant'Anna and Zhao (2020)" _n "Doubly robust DiD estimator based on stabilized inverse probability weighting and ordinary least squares"
 		ereturn display
 	}
 	else if "`ivar'"=="" {
@@ -213,14 +228,15 @@ syntax, touse(str) trt(str) y(str) [xvar(str)] [noisily] [ivar(str)] [tag(str)] 
 		}
 end
 
+**#
 program define drdid_reg, eclass
-syntax, touse(str) trt(str) y(str) [xvar(str)] [noisily] [ivar(str)] [tag(str)] tmt(str)
+syntax, touse(str) trt(str) y(str) [xvar(str)] [noisily] [ivar(str)] [tag(str)] tmt(str) [weight(str)]
 ** Simple application. But right now without RIF
 	if "`ivar'"!="" {
 		qui {
 			capture drop __dy__
 			bysort `touse' `ivar' (`tmt'):gen double __dy__=`y'[2]-`y'[1] if `touse' 
-			`isily' reg __dy__ `xvar' if `trt'==0 
+			`isily' reg __dy__ `xvar' if `trt'==0  [iw = `weight']
 			tempvar xb
 			predict double `xb'
 			capture drop __att__
@@ -230,14 +246,14 @@ syntax, touse(str) trt(str) y(str) [xvar(str)] [noisily] [ivar(str)] [tag(str)] 
 			matrix `regb'=e(b)
 			matrix `regV'=e(V)
 			tempname b V
-			mata:drdid_reg("__dy__", "`xvar'", "`xb'" , "`trt'", "`tmt'" , "`touse'","__att__","`b'","`V'") 
+			mata:drdid_reg("__dy__", "`xvar'", "`xb'" , "`trt'", "`tmt'" , "`touse'","__att__","`b'","`V'","`weight'") 
 	 
 			matrix colname `b' = __att__
 			matrix colname `V' = __att__
 			matrix rowname `V' = __att__
 			ereturn post `b' `V'
 		}
-		display "OR-DID estimator"
+		display "DiD with OR" _n "Outcome regression DiD estimator based on ordinary least squares"
 		ereturn display
 	}	
 	else if "`ivar'"=="" {
@@ -247,13 +263,14 @@ syntax, touse(str) trt(str) y(str) [xvar(str)] [noisily] [ivar(str)] [tag(str)] 
 
 end
 
+**#
 program define drdid_sipw, eclass
-syntax, touse(str) trt(str) y(str) [xvar(str)] [noisily] [ivar(str)] [tag(str)] tmt(str)
+syntax, touse(str) trt(str) y(str) [xvar(str)] [noisily] [ivar(str)] [tag(str)] tmt(str) [weight(str)]
 ** Simple application. But right now without RIF
 	if "`ivar'"!="" {
 	    *display "Estimating IPW logit"
 		qui {		
-			`isily' logit `trt' `xvar' if `touse'
+			`isily' logit `trt' `xvar' if `touse' [iw = `weight']
 			tempvar psxb
 			predict double `psxb', xb
 			tempname psb psV
@@ -278,7 +295,7 @@ syntax, touse(str) trt(str) y(str) [xvar(str)] [noisily] [ivar(str)] [tag(str)] 
 		*display "Estimating ATT"
 		qui {
 		    tempname b V		
-			noisily mata:drdid_sipw("__dy__","`xvar'","`xb'","`psb'","`psV'","`psxb'","`trt'","`tmt'","`touse'","__att__","`b'","`V'")		
+			noisily mata:drdid_sipw("__dy__","`xvar'","`xb'","`psb'","`psV'","`psxb'","`trt'","`tmt'","`touse'","__att__","`b'","`V'","`weight'")		
 			matrix colname `b'=__att__
 			matrix colname `V'=__att__
 			matrix rowname `V'=__att__
@@ -290,7 +307,7 @@ syntax, touse(str) trt(str) y(str) [xvar(str)] [noisily] [ivar(str)] [tag(str)] 
 			ereturn matrix ipwb `psb'
 			ereturn matrix ipwV `psV'
 		}
-		display "Standard IPW Estimator"
+		display "DiD with stabilized IPW" _n "Abadie (2005) inverse probability weighting DiD estimator with stabilized weights" 
 		ereturn display
 	}
 	
@@ -301,8 +318,9 @@ syntax, touse(str) trt(str) y(str) [xvar(str)] [noisily] [ivar(str)] [tag(str)] 
 end
 
 // only one without Mata writting. Consider working on it
+**#
 program define drdid_sipwra, eclass
-syntax, touse(str) trt(str) y(str) [xvar(str)] [noisily] [ivar(str)] [tag(str)] tmt(str)
+syntax, touse(str) trt(str) y(str) [xvar(str)] [noisily] [ivar(str)] [tag(str)] tmt(str) [weight(str)]
 ** Simple application. But right now without RIF
 	qui {
 		capture drop __dy__
@@ -312,7 +330,7 @@ syntax, touse(str) trt(str) y(str) [xvar(str)] [noisily] [ivar(str)] [tag(str)] 
 		local scl = r(mean)
 		gen double `sy'= __dy__/`scl'
 		
-		qui:teffects ipwra (`sy' `xvar') (`trt' `xvar', logit) if `touse' & `tmt'==0 , atet 
+		qui:teffects ipwra (`sy' `xvar') (`trt' `xvar', logit) if `touse' [iw = `weight'] , atet 
 		tempname b V aux
 		matrix `aux'=e(b)*`scl'
 		matrix `b'=`aux'[1,1]
@@ -328,30 +346,26 @@ end
  
 ** Needs rewritting 
 program define drdid_dript, eclass sortpreserve
-syntax, touse(str) trt(str) y(str) [xvar(str)] [noisily] [ivar(str)] [tag(str)] tmt(str)
+syntax, touse(str) trt(str) y(str) [xvar(str)] [noisily] [ivar(str)] [tag(str)] tmt(str) [weight(str)]
 	if "`ivar'"!="" {
 	   	*display "Estimating IPT"
 		qui {
-			`isily' ml model lf drdid_logit (`trt'=`xvar') if `touse' , maximize  robust
+			`isily' ml model lf drdid_logit (`trt'=`xvar') if `touse' [iw = `weight'], maximize  robust
 			`isily' ml display
 			tempname iptb iptV
 			matrix `iptb'=e(b)
 			matrix `iptV'=e(V)
-			tempvar prx
-			predictnl double `prx'=logistic(xb())
+			tempvar psxb
+			predict double `psxb',xb
 			** Determine dy and dyhat
 			capture drop __dy__
-			
 			bysort `touse' `ivar' (`tmt'):gen double __dy__=`y'[2]-`y'[1] if `touse'
-			
+
 			** determine weights
-			tempvar w1 w0
-			gen double `w1' = `trt'
-			gen double `w0' = ((`prx'*(1-`trt')))/(1-`prx')
+			tempvar w0 
+			gen double `w0' = ((logistic(`psxb')*(1-`trt')))/(1-logistic(`psxb'))*`weight'
 			
-			sum `w1' if `touse', meanonly
-			replace `w1'=`w1'/r(mean)
-			sum `w0' if `touse', meanonly
+			sum `w0' if `touse' , meanonly
 			replace `w0'=`w0'/r(mean)
 			
 			** estimating dy_hat for a counterfactual
@@ -359,36 +373,29 @@ syntax, touse(str) trt(str) y(str) [xvar(str)] [noisily] [ivar(str)] [tag(str)] 
 		*display "Estimating Counterfactual Outcome"	
 		qui {	
 			tempname regb regV
-			`isily' reg __dy__ `xvar' [w=`w0'] if `trt'==0 ,
+			`isily' reg __dy__ `xvar' [w=`w0'] if `trt'==0 & `tmt'==0,
 			matrix `regb' =e(b)
 			matrix `regV' =e(V)
-			tempvar dyhat
-			qui:predict double `dyhat'
-			tempvar att
-			qui:gen double `att'=__dy__-`dyhat'
+			tempvar xb
+			qui:predict double `xb'
+			tempname b V
 			capture drop __att__
-			sum `att' if `touse' & `trt'==1, meanonly
-			gen double __att__ = r(mean)+  (`w1'-`w0')*`att'-`w1'*r(mean) if `tag'==1  & `touse'
+			gen double __att__=.
+			noisily mata:drdid_dript("__dy__","`xvar'","`xb'","`psb'","`psV'","`psxb'","`trt'","`tmt'","`touse'","__att__","`b'","`V'","`weight'")		
+			matrix colname `b'=__att__
+			matrix colname `V'=__att__
+			matrix rowname `V'=__att__
+			ereturn post `b' `V'
+			local att1    =`=_b[__att__]'
+			local attvar1 =`=_se[__att__]'^2
+			ereturn scalar att1    =`att1'
+			ereturn scalar attvar1 =`attvar1'
+			ereturn matrix ipwb `iptb'
+			ereturn matrix ipwV `iptV'
+			ereturn matrix regb `regb'
+			ereturn matrix regV `regV'
 		}
-		*display "Estimating ATT"
-		tempvar touse2
-		qui:gen byte `touse2'=`touse'*(`tag'==1)
-		*qui:reg __att__ if   `touse', noheader
-		tempname b V
-		mata:b_V("`b'","`V'","__att__","`touse2'")
-		matrix colname `b'=__att__
-		matrix colname `V'=__att__
-		matrix rowname `V'=__att__
-		ereturn post `b' `V'
-		*** Wrapping all
-		ereturn local method drdid_ipt
- 		ereturn scalar att    =`=_b[__att__]'
-		ereturn scalar attvar =`=_se[__att__]'^2
-		ereturn matrix iptb `iptb'
-		ereturn matrix iptV `iptV'
-		ereturn matrix regb `regb'
-		ereturn matrix regV `regV'
-		display "Improved DR Inverse Tilting estimator"
+		display "DR DiD with IPT and WLS" _n "Sant'Anna and Zhao (2020) Improved doubly robust DiD estimator based on inverse probability of tilting and weighted least squares"
 		ereturn display
 	}
 	else {
@@ -465,15 +472,7 @@ syntax, touse(str) trt(str) y(str) [xvar(str)] [noisily] [ivar(str)] [tag(str)] 
 			replace __att2__=__att2__+`rif2'
 		}
 		tempname b V
-		/*display "ATT RC1 estimator"
-		mata:b_V("`b'","`V'","__att1__","`touse2'")
-		matrix colname `b'=__att__
-		matrix colname `V'=__att__
-		matrix rowname `V'=__att__
-		ereturn post `b' `V'
-		ereturn display
-		local att1    =`=_b[__att__]'
-		local attvar1 =`=_se[__att__]'^2*/
+ 
 		display "Improved DR Inverse Tilting estimator for RC"
 		mata:b_V("`b'","`V'","__att2__","`touse'")
 		matrix colname `b'=__att__
@@ -488,8 +487,8 @@ syntax, touse(str) trt(str) y(str) [xvar(str)] [noisily] [ivar(str)] [tag(str)] 
 
 		*ereturn scalar att1    =`att1'
 		*ereturn scalar attvar1 =`attvar1'
-		ereturn scalar att2    =`att1'
-		ereturn scalar attvar2 =`attvar1'
+		ereturn scalar att1    =`att1'
+		ereturn scalar attvar1 =`attvar1'
 		
 		ereturn matrix iptb `iptb'
 		ereturn matrix iptV `iptV'
@@ -503,12 +502,44 @@ syntax, touse(str) trt(str) y(str) [xvar(str)] [noisily] [ivar(str)] [tag(str)] 
 		ereturn matrix regV11 `regV11'
 	}
 end
- 
+  
 mata 
 	////////////////////////////////////////////////////////////////////////////////////////////////
-// SIPW
+// dript
+	void drdid_dript(string scalar dy_, xvar_, xb_ , psb_,psV_,psxb_,trt_,tmt_,touse,att_,bb,VV,ww) {
+	    real matrix dy, xvar, xb, psb, psv, psxb, trt, tmt
+		// This code is based on Asjad Replication
+		// Gather all data
+		real scalar nn
+		dy  =st_data(.,dy_  ,touse)
+		nn=rows(dy)
+		//st_view(xvar=.,xvar_,touse)
+		xb=st_data(.,xb_,touse)
+		psxb=st_data(.,psxb_,touse)
+		real matrix psc
+		psc=logistic(psxb)
+		trt =st_data(.,trt_ ,touse)
+		tmt =1:-st_data(.,tmt_ ,touse)
+		// and matrices
+		///psb =st_matrix(psb_ )
+		///psv =st_matrix(psV_ )
+		// for now assume weights = 1
+		real matrix w
+		w=st_data(.,ww,touse)
+		real matrix w_1 , w_0, att, att_inf_func
+		w_1 = w :* trt
+		w_0 = w :* psc :* (1:-trt):/(1:-psc)
+		w_1 = w_1:/mean(w_1)
+		w_0 = w_0:/mean(w_0)
+		att=(dy:-xb):*(w_1:-w_0)
+		att_inf_func = mean(att,tmt) :+ att :- w_1:*mean(att,tmt)
+		st_store(.,att_,touse, att_inf_func)	
+		st_matrix(bb,mean(att_inf_func,tmt ))
+		st_matrix(VV,variance(att_inf_func,tmt)/sum(tmt))
+		
+	}
  
-  	void drdid_sipw(string scalar dy_, xvar_, xb_ , psb_,psV_,psxb_,trt_,tmt_,touse,att_,bb,VV) {
+  	void drdid_sipw(string scalar dy_, xvar_, xb_ , psb_,psV_,psxb_,trt_,tmt_,touse,att_,bb,VV,ww) {
 	    real matrix dy, xvar, xb, psb, psv, psxb, trt, tmt
  		// Gather all data
 		real scalar nn
@@ -525,8 +556,8 @@ mata
 		//psb =st_matrix(psb_ )
 		psv =st_matrix(psV_ )
 		// for now assume weights = 1
-		real scalar w
-		w=1
+		real matrix w
+		w=st_data(.,ww,touse)
 		real matrix w_1, w_0, att_cont, att_treat,
 					eta_treat, eta_cont, 
 					lin_ps,  att_inf_func
@@ -553,7 +584,7 @@ mata
 		st_matrix(VV,variance(att_inf_func,tmt)/sum(tmt))
 	}
   
-	void drdid_reg(string scalar dy_, xvar_, xb_ , trt_,tmt_,touse,att_,bb,VV) {
+	void drdid_reg(string scalar dy_, xvar_, xb_ , trt_,tmt_,touse,att_,bb,VV,ww) {
 	    real matrix dy, xvar, xb, trt, tmt
 		// This code is based on Asjad Replication
 		// Gather all data
@@ -571,8 +602,8 @@ mata
 		// psb =st_matrix(psb_ )
 		// psv =st_matrix(psV_ )
 		// for now assume weights = 1
-		real scalar w
-		w=1
+		real matrix w
+		w=st_data(.,ww,touse)
 		real matrix w_1, w_0, att_cont, att_treat,
 					eta_treat, eta_cont, wols_x, wols_eX,
 					lin_ols, att_inf_func
@@ -604,7 +635,7 @@ mata
  
 /////////////////////////////////////////////////////////////////////////////////////////////////	
 // TIPW
- 	void drdid_tipw(string scalar dy_, xvar_, xb_ , psb_,psV_,psxb_,trt_,tmt_,touse,att_,bb,VV) {
+ 	void drdid_tipw(string scalar dy_, xvar_, xb_ , psb_,psV_,psxb_,trt_,tmt_,touse,att_,bb,VV,ww) {
 	    real matrix dy, xvar, xb, psb, psv, psxb, trt, tmt
  		// Gather all data
 		real scalar nn
@@ -621,8 +652,8 @@ mata
 		psb =st_matrix(psb_ )
 		psv =st_matrix(psV_ )
 		// for now assume weights = 1
-		real scalar w
-		w=1
+		real matrix w
+		w=st_data(.,ww,touse)
 		real matrix w_1, w_0, att_cont, att_treat,
 					eta_treat, eta_cont, ipw_att,
 					lin_ps, att_lin1, mom_logit, att_lin2, att_inf_func
@@ -639,14 +670,12 @@ mata
 		mom_logit = mean(att_cont  :* xvar)
 		att_lin2  = lin_ps * mom_logit'
 		att_inf_func = mean(ipw_att):+(att_lin1 :- att_lin2 :- w_1 :* ipw_att)/mean(w_1)
-		mean(att_inf_func)
-		sqrt(variance(att_inf_func)/nn)
-		st_store(.,att_,touse, att_inf_func)	
+ 		st_store(.,att_,touse, att_inf_func)	
 		st_matrix(bb,mean(att_inf_func,tmt ))
 		st_matrix(VV,variance(att_inf_func,tmt)/sum(tmt))
 	}
 	
- 	void drdid_ipw(string scalar dy_, xvar_, xb_ , psb_,psV_,psxb_,trt_,tmt_,touse,att_,bb,VV) {
+ 	void drdid_ipw(string scalar dy_, xvar_, xb_ , psb_,psV_,psxb_,trt_,tmt_,touse,att_,bb,VV,ww) {
 	    real matrix dy, xvar, xb, psb, psv, psxb, trt, tmt
 		// This code is based on Asjad Replication
 		// Gather all data
@@ -664,8 +693,8 @@ mata
 		psb =st_matrix(psb_ )
 		psv =st_matrix(psV_ )
 		// for now assume weights = 1
-		real scalar w
-		w=1
+		real matrix w
+		w=st_data(.,ww,touse)
 		
 		// TRAD DRDID
 		real matrix w_1, w_0 
@@ -687,8 +716,6 @@ mata
 		XpX_inv  = invsym(quadcross(xvar,w_ols,xvar))*nn 
 		lin_wols =  wols_eX * XpX_inv   
 		// IF for logit
-		//# Asymptotic linear representation of logit's beta's
-		// w placeholder for weights
 		lin_ps 	   = (w :* (trt:-psc) :* xvar) * (psv * nn)
 		// Components for RIF
 		n1   = w_1:*((dy_xb):-mean(dy_xb,w_1))
