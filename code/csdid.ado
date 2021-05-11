@@ -4,7 +4,6 @@
 * Logic. Estimate the ATT of the base (first) year against all subsequent years
 * using data BY groups
 ** assumes all years are available. For now
-capture program drop csdid
 program csdid, eclass
 syntax varlist(fv ) [if] [in], ivar(varname) time(varname) gvar(varname) [att_gt] [notyet]
 	marksample touse
@@ -28,6 +27,7 @@ syntax varlist(fv ) [if] [in], ivar(varname) time(varname) gvar(varname) [att_gt
 		tempname b v
  		foreach i of local glev {		
 		    foreach j of local tlev {
+				* Stata quirk: `notyet' is called `tyet' because "no" is removed
 			    if "`tyet'"=="" {
 				    ** This implements the Never treated
 					local time1 = min(`i'-1, `j'-1)
