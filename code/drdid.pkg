@@ -32,6 +32,7 @@ f example.do
 f test.do
 f ../data/lalonde.dta
 f ../data/mpdta.dta
+f ../LICENSE
 
 f drdid.sthlp
 
