@@ -41,7 +41,8 @@ syntax varlist(fv ) [if] [in], ivar(varname) time(varname) gvar(varname) [att_gt
 				    ** This will implement not yet treated.
 					qui:replace `tr'=`gvar'==`i' if `touse'
 					local time1 = min(`i'-1, `j'-1)
-					qui:drdid `varlist' if (`gvar'==0 | `gvar'>=`i') & inlist(`time',`time1',`j'), ivar(`ivar') time(`time') treatment(`tr')
+					* Use as controls those never treated and those not treated by time `j'
+					qui:drdid `varlist' if (`gvar'==0 | `gvar'==`i' | `gvar'>`j') & inlist(`time',`time1',`j'), ivar(`ivar') time(`time') treatment(`tr')
 					matrix `b'=nullmat(`b'),e(b)
 					matrix `v'=nullmat(`v'),e(V)
 					local eqname `eqname' g`i'
