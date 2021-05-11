@@ -8,12 +8,22 @@ time: Variable identifying Time.
 tr: Variable identify ever treated group
 
 */
-adopath + C:\Users\Fernando\Documents\GitHub\playingwithstata\drdid
-sysuse lalonde
+adopath + C:\Users\Fernando\Documents\GitHub\csdid_drdid\code
+adopath + C:\Users\Fernando\Documents\GitHub\csdid_drdid\data
+sysuse lalonde, clear
 ** Example Simple Panel estimator
 drdid re age educ black married nodegree hisp re74 if treated==0 | sample==2 , ivar(id) time(year) tr( experimental )  
+drdid re age educ black married nodegree hisp re74 if treated==0 | sample==2 , ivar(id) time(year) tr( experimental )  all
 ** DRDID IPW instead of IPT
-drdid re age educ black married nodegree hisp re74 if treated==0 | sample==2 , ivar(id) time(year) tr( experimental )  ipw
+drdid re age educ black married nodegree hisp re74 if treated==0 | sample==2 , ivar(id) time(year) tr( experimental )  drimp
+
+drdid re age educ black married nodegree hisp re74 if treated==0 | sample==2 , ivar(id) time(year) tr( experimental )  dripw
+
+drdid re age educ black married nodegree hisp re74 if treated==0 | sample==2 , ivar(id) time(year) tr( experimental )  reg
+
+drdid re age educ black married nodegree hisp re74 if treated==0 | sample==2 , ivar(id) time(year) tr( experimental )  sipw
+
+drdid re age educ black married nodegree hisp re74 if treated==0 | sample==2 , ivar(id) time(year) tr( experimental )  ipwra
 
 ** Example RC estimator
 drdid re age educ black married nodegree hisp re74 if treated==0 | sample==2 ,   time(year) tr( experimental )  
