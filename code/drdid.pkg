@@ -1,0 +1,37 @@
+v 3
+
+d DRDID: Doubly Robust Difference-in-Differences Estimators
+d
+d Authors: 
+d Support: 
+d
+d drdid implements the locally efficient doubly robust difference-in-differences (DiD) estimators 
+d for the average treatment effect proposed by Sant'Anna and Zhao (2020)
+d  <doi:10.1016/j.jeconom.2020.06.003>. The estimator combines inverse probability weighting and 
+d outcome regression estimators (also implemented in the package) to form estimators with more
+d attractive statistical properties. Two different estimation methods can be used to estimate 
+d the nuisance functions.
+d
+d For details (user guide, help, FAQ), see the website:
+d https://github.com/friosavila/csdid_drdid
+d
+d KW: treatment effects
+d KW: difference in differences
+d KW: att
+d
+d Requires: Stata version ??
+d
+d Distribution-Date: 20210511
+d
+
+f drdid.ado
+f drdid_logit.ado
+f drdid_rc.ado
+
+f example.do
+f test.do
+f ../data/lalonde.dta
+f ../data/mpdta.dta
+
+f drdid.sthlp
+
