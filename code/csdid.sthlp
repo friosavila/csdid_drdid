@@ -44,7 +44,8 @@ but more flexible, faster, and saves results on {it:e(summarize)}{p_end}
 {title:Description}
 
 {pstd}
-{cmd:reghdfe} is a generalization of {help areg} (and {help xtreg:xtreg,fe}, {help xtivreg:xtivreg,fe}) for multiple levels of fixed effects
+The standard Difference-in-Differences (DID) setup involves two periods and two groups – a treated group and untreated group. Many applications of DID methods involve more than two periods and have individuals that are treated at different points in time. This package contains tools for computing average treatment effect parameters in Difference in Differences setups with more than two periods and with variation in treatment timing using the methods developed in Callaway and Sant'Anna (2020) <https://www.ssrn.com/abstract=3148250>. The main parameters are group-time average treatment effects which are the average treatment effect for a particular group at a a particular time. These can be aggregated into a fewer number of treatment effect parameters, and the package deals with the cases where there is selective treatment timing, dynamic treatment effects, calendar time effects, or combinations of these. There are also functions for testing the Difference in Differences assumption, and plotting group-time average treatment effects.
+{cmd:csdid} is a generalization of {help areg} (and {help xtreg:xtreg,fe}, {help xtivreg:xtivreg,fe}) for multiple levels of fixed effects
 (including heterogeneous slopes), alternative estimators (2sls, gmm2s, liml), and additional robust standard errors (multi-way clustering, HAC standard errors, etc).{p_end}
 
 {pstd}Additional features include:{p_end}
