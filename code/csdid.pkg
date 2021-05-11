@@ -1,0 +1,40 @@
+v 3
+
+d CSDID: Treatment Effects with Multiple Periods and Groups
+d
+d Authors: 
+d Support: 
+d
+d csdid computes average treatment effect parameters in difference-in-differences setups with 
+d more than two periods and with variation in treatment timing using the methods developed in 
+d Callaway and Sant'Anna (2020) <https://www.ssrn.com/abstract=3148250>. 
+d The main parameters are group-time average treatment effects which are the average 
+d treatment effect for a particular group at a particular time.
+d
+d For details (user guide, help, FAQ), see the website:
+d https://github.com/friosavila/csdid_drdid
+d
+d KW: treatment effects
+d KW: difference in differences
+d KW: att
+d
+d Requires: Stata version ??
+d
+d Required packages:
+d 	drdid
+d
+d Distribution-Date: 20210511
+d
+
+f csdid.ado
+f drdid.ado
+f drdid_logit.ado
+f drdid_rc.ado
+
+f example.do
+f test.do
+f ../data/lalonde.dta
+f ../data/mpdta.dta
+
+f csdid.sthlp
+

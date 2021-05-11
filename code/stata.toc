@@ -1,0 +1,3 @@
+v 3
+d https://github.com/friosavila/csdid_drdid
+p csdid CSDID - Treatment Effects with Multiple Periods and Groups
