@@ -69,6 +69,17 @@ The standard Difference-in-Differences (DID) setup involves two periods and two 
 {opth a:bsorb(reghdfe##absvar:absvars)} list of categorical variables (or interactions) representing the fixed effects to be absorbed.
 this is equivalent to including an indicator/dummy variable for each category of each {it:absvar}. {cmd:absorb()} is required.
 
+DR DiD with IPT and WLS
+Sant’Anna and Zhao (2020) Improved doubly robust DiD estimator based on inverse probability of tilting and weighted least squares
+DR DiD with IPW and OLS
+Sant’Anna and Zhao (2020) doubly robust DiD estimator based on stabilized inverse probability weighting and ordinary least squares
+DiD with IPW
+Abadie (2005) inverse probability weighting DiD estimator
+DiD with OR
+Outcome regression DiD estimator based on ordinary least squares
+DiD with stabilized IPW
+Abadie (2005) inverse probability weighting DiD estimator with stabilized weights (edited) 
+
 {pmore}
 To save a fixed effect, prefix the absvar with "{newvar}{cmd:=}".
 For instance, the option {cmd:absorb(firm_id worker_id year_coefs=year_id)} will include firm,
