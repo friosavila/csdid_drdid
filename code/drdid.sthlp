@@ -1,8 +1,8 @@
 {smcl}
 
 
-{marker csdid-difference-in-differences-with-multiple-time-periods}{...}
-{title:{cmd:csdid} Difference in differences with multiple time periods}
+{marker drdid-doubly-robust-difference-in-differences-estimators}{...}
+{title:{cmd:drdid} Doubly Robust Difference-in-Differences Estimators}
 
 
 {marker syntax}{...}
@@ -13,6 +13,18 @@
 
 {marker options}{...}
 {title:Options}
+
+{synoptset tabbed}{...}
+{synopthdr:Option}
+{synoptline}
+{synopt:{bf:ivar}}Variable indexing groups, e.g., {it:country}{p_end}
+{synopt:{bf:time}}Variable indexing time, e.g., {it:year}{p_end}
+{synopt:{bf:treatment}}Dummy variable indicating treatment, e.g., {it:reform}{p_end}
+{synoptline}
+
+
+{marker models}{...}
+{title:Models}
 
 
 {marker dr-did-with-ipt-and-wls}{...}
@@ -47,6 +59,32 @@
 
 {marker authors}{...}
 {title:Authors}
+
+
+{marker authors-1}{...}
+{dlgtab:Authors}
+
+{text}{phang2}Fernando Rios-Avila (Levy Economics Institute of Bard College), {it:maintainer}{p_end}
+{phang2}Asjad Naqvi (International Institute for Applied Systems Analysis){p_end}
+
+
+
+{marker contributors}{...}
+{dlgtab:Contributors}
+
+{text}{phang2}Miklós Koren (Central European University){p_end}
+{phang2}Pedro H. C. Sant'Anna (Vanderbilt University){p_end}
+
+
+
+{marker license-and-citation}{...}
+{title:License and Citation}
+
+{pstd}You are free to use this package under the terms of its {browse "LICENSE":license}. If you use it, please cite {it:both} the original article and the software package in your work:{p_end}
+
+{text}{phang2}Sant’Anna, Pedro H. C., and Jun Zhao. 2020a. “Doubly Robust Difference-in-Differences Estimators.” {it:Journal of Econometrics} 219 (1): 101–22.{p_end}
+{phang2}Rios-Avila, Fernando, Asjad Naqvi (authors), Miklós Koren and Pedro H. C. Sant'Anna (contributors). 2021. “DRDID: Doubly Robust Difference-in-Differences Estimators for Stata.” [Software] Available at {browse "https://github.com/friosavila/csdid_drdid/":https://github.com/friosavila/csdid_drdid/}{p_end}
+
 
 
 {marker references}{...}
