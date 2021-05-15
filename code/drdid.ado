@@ -1,4 +1,5 @@
 ** Goal. Make the estimator modular. That way other options can be added
+*! v1.31 DRDID for Stata by FRA. Adding program for Bootstrap multiplier
 *! v1.3 DRDID for Stata by FRA Changing ATT RIF creation
 * v1.2 DRDID for Stata by FRA All Estimators are ready For panel and RC
 * Next help!
@@ -16,11 +17,15 @@ capture program drop _all
 mata:mata clear
 program define drdid, eclass sortpreserve
 	syntax varlist(fv ) [if] [in] [iw], [ivar(varname)] time(varname) TReatment(varname) ///
-	[noisily drimp dripw reg stdipw aipw ipwra all  rc1]  
+	[noisily drimp dripw reg stdipw aipw ipwra all  rc1 boot reps(int 999) ///
+	bootype(int 1)  /// Hidden option
+	]  
 	local 00 `0'
 	marksample touse
 	markout `touse' `ivar' `time' `treatment'
 
+	numlist "`reps'",  integer max(1) range(>0) 
+	
 	** Which option 
 	if "`drimp'`dripw'`reg'`stdipw'`aipw'`ipwra'`all'"=="" {
 	    display "No estimator selected. Using default -drimp-"
@@ -107,44 +112,59 @@ program define drdid, eclass sortpreserve
 		matrix `bb' = nullmat(`bb')\e(b)
 		matrix `VV' = nullmat(`VV')\e(V)
 		local clname dripw
+		capture drop __att_dripw
+		ren __att__  __att_dripw
 		if "`ivar'"=="" {
 		    qui:drdid_dripw , touse(`touse') tmt(`tmt') trt(`trt') y(`y') xvar(`xvar') `isily' ivar(`ivar') tag(`tag') weight(`wgt') rc1
 			matrix `bb' = nullmat(`bb')\e(b)
 			matrix `VV' = nullmat(`VV')\e(V)
 			local clname `clname' dripw_rc1
+			capture drop __att_dripwrc
+			clonevar __att_dripwrc=__att__
 		}
 	** DRIMP	
 	    qui:drdid_imp , touse(`touse') tmt(`tmt') trt(`trt') y(`y') xvar(`xvar') `isily' ivar(`ivar') tag(`tag') weight(`wgt')
 		matrix `bb' = nullmat(`bb')\e(b)
 		matrix `VV' = nullmat(`VV')\e(V)
 		local clname `clname' drimp
+		capture drop __att_drimp
+		ren __att__  __att_drimp
 		
 		if "`ivar'"=="" {
 		    qui:drdid_imp , touse(`touse') tmt(`tmt') trt(`trt') y(`y') xvar(`xvar') `isily' ivar(`ivar') tag(`tag') weight(`wgt') rc1
 			matrix `bb' = nullmat(`bb')\e(b)
 			matrix `VV' = nullmat(`VV')\e(V)
 			local clname `clname' drimp_rc1
+			capture drop __att_drimprc
+			ren __att__  __att_drimprc
 		}
 	** REG
 		qui:drdid_reg , touse(`touse') tmt(`tmt') trt(`trt') y(`y') xvar(`xvar') `isily' ivar(`ivar') tag(`tag') weight(`wgt')
 		matrix `bb' = nullmat(`bb')\e(b)
 		matrix `VV' = nullmat(`VV')\e(V)
 		local clname `clname' reg
+		capture drop __att_reg
+		ren __att__  __att_reg
 	** TRAD_IPW	
 	    qui:drdid_aipw , touse(`touse') tmt(`tmt') trt(`trt') y(`y') xvar(`xvar') `isily' ivar(`ivar') tag(`tag') weight(`wgt')
 		matrix `bb' = nullmat(`bb')\e(b)
 		matrix `VV' = nullmat(`VV')\e(V)
 		local clname `clname' aipw
+		capture drop __att_aipw
+		ren __att__  __att_aipw
 	** STD IPW	
 		qui:drdid_stdipw , touse(`touse') tmt(`tmt') trt(`trt') y(`y') xvar(`xvar') `isily' ivar(`ivar') tag(`tag') weight(`wgt')
 		matrix `bb' = nullmat(`bb')\e(b)
 		matrix `VV' = nullmat(`VV')\e(V)
+		capture drop __att_stdipw
+		ren __att__  __att_stdipw
 		local clname `clname' stdipw
 		if "`ivar'"!="" {
-			display "NOT DRDID: DID with Standard IPW with RA"
+			
 			qui:drdid_sipwra , touse(`touse') tmt(`tmt') trt(`trt') y(`y') xvar(`xvar') `isily' ivar(`ivar') tag(`tag') weight(`wgt')
 			matrix `bb' = nullmat(`bb')\e(b)
 			matrix `VV' = nullmat(`VV')\e(V)
+			
 			local clname `clname' sipwra
 		}
 		matrix `bb'=`bb''
@@ -155,6 +175,7 @@ program define drdid, eclass sortpreserve
 		matrix rowname `VV' = `clname'
 		ereturn post `bb' `VV'
 		ereturn display
+		mean __att_*
 	}
 	
 	ereturn local cmd drdid
@@ -195,6 +216,10 @@ syntax, touse(str) trt(str) y(str) [xvar(str)] [noisily] [ivar(str)] [tag(str)] 
 		    tempname b V
 			mata:ipw_abadie_panel("__dy__","`xvar'","`xb'","`psb' ","`psV' ","`psxb'","`trt'","`tmt'","`touse2'","__att__","`b'","`V'","`weight'")
 			*replace __att__=. if `tmt'==1
+			if "`boot'"!="" {
+			    mata:mboot("__att__", "`touse2'", "`V'", `reps', `bwtype')
+			}
+			
 			matrix colname `b'=__att__
 			matrix colname `V'=__att__
 			matrix rowname `V'=__att__
@@ -222,6 +247,10 @@ syntax, touse(str) trt(str) y(str) [xvar(str)] [noisily] [ivar(str)] [tag(str)] 
 			capture drop __att__
 			gen double __att__=.
 			mata:ipw_abadie_rc("`y'","`xvar'","`tmt'","`trt'","`psV'","`psxb'","`weight'","`touse'","__att__","`b'","`V'")
+			** Wbootstrap Multipler
+			if "`boot'"!="" {
+			    mata:mboot("__att__", "`touse'", "`V'", `reps', `bwtype')
+			}
 			matrix colname `b' =__att__
 			matrix colname `V' =__att__
 			matrix rowname `V' =__att__
@@ -271,6 +300,9 @@ syntax, touse(str) trt(str) y(str) [xvar(str)] [noisily] [ivar(str)] [tag(str)] 
 		    tempname b V
 			mata:drdid_panel("__dy__","`xvar'","`xb'","`psb'","`psV'","`psxb'","`trt'","`tmt'","`touse2'","__att__","`b'","`V'","`weight'")
 			**replace __att__=. if `tmt'==1
+			if "`boot'"!="" {
+			    mata:mboot("__att__", "`touse2'", "`V'", `reps', `bwtype')
+			}
 			matrix colname `b'=__att__
 			matrix colname `V'=__att__
 			matrix rowname `V'=__att__
@@ -328,6 +360,10 @@ syntax, touse(str) trt(str) y(str) [xvar(str)] [noisily] [ivar(str)] [tag(str)] 
 			    mata:drdid_rc1("`y'","`y00' `y01' `y10' `y11'","`xvar'","`tmt'","`trt'","`psV'","`psxb'","`weight'","`touse'","__att__","`b'","`V'")
 				local nle "Not Locally efficient"
 			}
+			////
+			if "`boot'"!="" {
+			    mata:mboot("__att__", "`touse'", "`V'", `reps', `bwtype')
+			}			
 			matrix colname `b' =__att__
 			matrix colname `V' =__att__
 			matrix rowname `V' =__att__			
@@ -377,6 +413,9 @@ syntax, touse(str) trt(str) y(str) [xvar(str)] [noisily] [ivar(str)] [tag(str)] 
 			gen byte `touse2'=`touse'*(`tmt'==0)
 			mata:reg_panel("__dy__", "`xvar'", "`xb'" , "`trt'", "`tmt'" , "`touse2'","__att__","`b'","`V'","`weight'") 
 			*replace __att__=. if `tmt'==1
+			if "`boot'"!="" {
+			    mata:mboot("__att__", "`touse2'", "`V'", `reps', `bwtype')
+			}			
 			matrix colname `b' = __att__
 			matrix colname `V' = __att__
 			matrix rowname `V' = __att__
@@ -407,6 +446,9 @@ syntax, touse(str) trt(str) y(str) [xvar(str)] [noisily] [ivar(str)] [tag(str)] 
 			capture drop __att__
 			gen double __att__=.
 			mata:reg_rc("`y'","`y00' `y01'","`xvar'","`tmt'","`trt'","`weight'","`touse'","__att__","`b'","`V'")
+			if "`boot'"!="" {
+			    mata:mboot("__att__", "`touse'", "`V'", `reps', `bwtype')
+			}			
 			matrix colname `b' =__att__
 			matrix colname `V' =__att__
 			matrix rowname `V' =__att__
@@ -460,6 +502,9 @@ syntax, touse(str) trt(str) y(str) [xvar(str)] [noisily] [ivar(str)] [tag(str)] 
 			gen byte `touse2'=`touse'*(`tmt'==0)
 			noisily mata:std_ipw_panel("__dy__","`xvar'","`xb'","`psb'","`psV'","`psxb'","`trt'","`tmt'","`touse2'","__att__","`b'","`V'","`weight'")
 			*replace __att__=. if `tmt'==1
+			if "`boot'"!="" {
+			    mata:mboot("__att__", "`touse2'", "`V'", `reps', `bwtype')
+			}			
 			matrix colname `b'=__att__
 			matrix colname `V'=__att__
 			matrix rowname `V'=__att__
@@ -488,6 +533,9 @@ syntax, touse(str) trt(str) y(str) [xvar(str)] [noisily] [ivar(str)] [tag(str)] 
 			capture drop __att__
 			gen __att__=.
 			mata:std_ipw_rc("`y'","`xvar'","`tmt'","`trt'","`psV'","`psxb'","`weight'","`touse'","__att__","`b'","`V'")
+			if "`boot'"!="" {
+			    mata:mboot("__att__", "`touse'", "`V'", `reps', `bwtype')
+			}			
 			matrix colname `b' =__att__
 			matrix colname `V' =__att__
 			matrix rowname `V' =__att__
@@ -578,7 +626,11 @@ syntax, touse(str) trt(str) y(str) [xvar(str)] [noisily] [ivar(str)] [tag(str)] 
 			tempvar touse2
 			gen byte `touse2'=`touse'*(`tmt'==0)
 			
-			noisily mata:drdid_imp_panel("__dy__","`xvar'","`xb'","`psb'","`psV'","`psxb'","`trt'","`tmt'","`touse2'","__att__","`b'","`V'","`weight'")		
+			noisily mata:drdid_imp_panel("__dy__","`xvar'","`xb'","`psb'","`psV'","`psxb'","`trt'","`tmt'","`touse2'","__att__","`b'","`V'","`weight'")	
+			
+			if "`boot'"!="" {
+			    mata:mboot("__att__", "`touse2'", "`V'", `reps', `bwtype')
+			}			
 			*replace __att__=. if `tmt'==1
 			matrix colname `b'=__att__
 			matrix colname `V'=__att__
@@ -640,6 +692,10 @@ syntax, touse(str) trt(str) y(str) [xvar(str)] [noisily] [ivar(str)] [tag(str)] 
 			    mata:drdid_imp_rc1("`y'","`y00' `y01' `y10' `y11'","`xvar'","`tmt'","`trt'","`iptV'","`psxb'","`weight'","`touse'","__att__","`b'","`V'")
 				local nle "Not Locally efficient"
 			}
+			
+			if "`boot'"!="" {
+			    mata:mboot("__att__", "`touse2'", "`V'", `reps', `bwtype')
+			}			
 			matrix colname `b'=__att__
 			matrix colname `V'=__att__
 			matrix rowname `V'=__att__
@@ -1511,9 +1567,60 @@ void drdid_imp_rc1(string scalar y_, yy_, xvar_ , tmt_, trt_, psv_, pxb_, wgt_ ,
 //  -3.683728719	
 //	 3.114495585
 }
+//** Simple Bootstrap.
  
-end
+real matrix mboot_did(pointer scalar y, real scalar reps, bwtype) {
+	real matrix yy, bsmean
+	yy=*y:-mean((*y))
+ 	bsmean=J(reps,cols(yy),0)
+	real scalar i,n, k1, k2
+	n=rows(yy)
+	k1=((1+sqrt(5))/(2*sqrt(5)))
+	k2=0.5*(1+sqrt(5)) 
+	for(i=1;i<=reps;i++){
+		// WBootstrap:Mammen 
+		if (bwtype==1) {			
+			bsmean[i,]=mean(yy:*(k2:-sqrt(5)*(runiform(n,1):<k1)) )	
+		}
+		else if (bwtype==2) {
+		// -1 or 1:Rademacher distribution:
+			bsmean[i,]=mean(yy:*(1:-2*runiformint(n,1,0,1) ) )	
+		}	
+	}
+	return(bsmean)
+}
+ 
+real matrix iqrse(real matrix y) {
+    real scalar q25,q75
+	q25=ceil((rows(y)+1)*.25)
+	q75=ceil((rows(y)+1)*.75)
+	real scalar j
+	real matrix iqrs
+	iqrs=J(1,cols(y),0)
+	for(j=1;j<=cols(y);j++){
+	    y=sort(y,j)
+		iqrs[,j]=(y[q75,j]-y[q25,j]):/(invnormal(.75)-invnormal(.25) )
+	}
+	return(iqrs)
+}
 
+real scalar qtp(real matrix y, real scalar p) {
+    y=sort(y,1)
+	real scalar q
+	q=ceil((rows(y)+1)*p)
+	return(y[q,])
+}
+ 
+void mboot(string scalar rif, touse, vv, real scalar reps, bwtype ) {
+    real matrix y, fr
+	y=st_data(., rif, touse )
+	fr=mboot_did(&y, reps, bwtype)
+	//sqrt(variance(fr))
+	st_matrix(vv,iqrse(fr)^2)
+}
+
+/// qtp(abs(xx/ iqrse(xx)),.95) 
+end
 
 ** estimators left
 **dp p
