@@ -32,6 +32,18 @@ Option | Description
 **boot** | Bootstrapped standard errors
 **reps**(*int*) | *int* number of bootstrap repetitions
 
+# Examples
+```
+sysuse lalonde, clear
+```
+Panel estimator with default **drimp** method
+```
+drdid re age educ black married nodegree hisp re74 if treated==0 | sample==2, ivar(id) time(year) tr(experimental)  
+```
+Repeated cross section
+```
+drdid re age educ black married nodegree hisp re74 if treated==0 | sample==2, time(year) tr(experimental)
+```
 
 # Authors
 - Fernando Rios-Avila (Levy Economics Institute of Bard College), *maintainer*

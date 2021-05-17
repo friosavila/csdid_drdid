@@ -58,6 +58,23 @@
 {synoptline}
 
 
+{marker examples}{...}
+{title:Examples}
+
+{phang2}{cmd}. sysuse lalonde, clear
+
+
+{pstd}Panel estimator with default {bf:drimp} method{p_end}
+
+{phang2}{cmd}. drdid re age educ black married nodegree hisp re74 if treated==0 | sample==2, ivar(id) time(year) tr(experimental)  
+
+
+{pstd}Repeated cross section{p_end}
+
+{phang2}{cmd}. drdid re age educ black married nodegree hisp re74 if treated==0 | sample==2, time(year) tr(experimental)
+
+
+
 {marker authors}{...}
 {title:Authors}
 
