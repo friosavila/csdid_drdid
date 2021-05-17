@@ -1,9 +1,9 @@
 v 3
 
-d DRDID: Doubly Robust Difference-in-Differences Estimators
+d DRDID: Doubly Robust Difference-in-Differences Estimators (version 0.1)
 d
-d Authors: 
-d Support: 
+d Authors: Fernando Rios-Avila (maintainer) and Asjad Naqvi
+d Support: https://github.com/friosavila/csdid_drdid/tree/v0.1
 d
 d drdid implements the locally efficient doubly robust difference-in-differences (DiD) estimators 
 d for the average treatment effect proposed by Sant'Anna and Zhao (2020)
@@ -12,16 +12,13 @@ d outcome regression estimators (also implemented in the package) to form estima
 d attractive statistical properties. Two different estimation methods can be used to estimate 
 d the nuisance functions.
 d
-d For details (user guide, help, FAQ), see the website:
-d https://github.com/friosavila/csdid_drdid
-d
 d KW: treatment effects
 d KW: difference in differences
 d KW: att
 d
 d Requires: Stata version ??
 d
-d Distribution-Date: 20210511
+d Distribution-Date: 20210517
 d
 
 f drdid.ado
@@ -35,4 +32,3 @@ f ../data/mpdta.dta
 f ../LICENSE
 
 f drdid.sthlp
-
