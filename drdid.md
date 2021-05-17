@@ -25,19 +25,14 @@ Outcome regression DiD estimator based on ordinary least squares
 Abadie (2005) inverse probability weighting DiD estimator with stabilized weights
 
 # Authors
-## Authors
 - Fernando Rios-Avila (Levy Economics Institute of Bard College), *maintainer*
 - Asjad Naqvi (International Institute for Applied Systems Analysis)
-
-## Contributors
-- Miklós Koren (Central European University)
-- Pedro H. C. Sant'Anna (Vanderbilt University)
 
 # License and Citation
 You are free to use this package under the terms of its [license](LICENSE). If you use it, please cite *both* the original article and the software package in your work:
 
 - Sant’Anna, Pedro H. C., and Jun Zhao. 2020a. “Doubly Robust Difference-in-Differences Estimators.” *Journal of Econometrics* 219 (1): 101–22.
-- Rios-Avila, Fernando, Asjad Naqvi (authors), Miklós Koren and Pedro H. C. Sant'Anna (contributors). 2021. “DRDID: Doubly Robust Difference-in-Differences Estimators for Stata.” [Software] Available at https://github.com/friosavila/csdid_drdid/
+- Rios-Avila, Fernando and Asjad Naqvi. 2021. “DRDID: Doubly Robust Difference-in-Differences Estimators for Stata.” [Software] Available at https://github.com/friosavila/csdid_drdid/tree/v0.1
 
 # References
 - Abadie, Alberto. 2005. “Semiparametric Difference-in-Differences Estimators.” *The Review of Economic Studies* 72 (1): 1–19.
