@@ -2,27 +2,36 @@
 
 # Syntax
 
-{p 8 15 2} {cmd:csdid} {depvar} [{indepvars}] {ifin} {cmd:,} {opth ivar(varname)} {opth time(varname)} {opth treatment(varname)} 
+- `csdid` *depvar* [*indepvars*] [*if*] [*in*] [*iweight*], [**ivar**(*varname*)] **time**(*varname*) **TReatment**(*varname*) [**noisily** *method*  **rc1** **boot** **reps**(*int*)]
 
 # Options
-
-Option | Description
+## Parameters
+Parameter | Description
 -------|------------
 **ivar**   | Variable indexing groups, e.g., *country*
 **time**   | Variable indexing time, e.g., *year*
 **treatment** | Dummy variable indicating treatment, e.g., *reform*
 
-# Models
-## DR DiD with IPT and WLS
-Sant’Anna and Zhao (2020a) Improved doubly robust DiD estimator based on inverse probability of tilting and weighted least squares
-## DR DiD with IPW and OLS
-Sant’Anna and Zhao (2020a) doubly robust DiD estimator based on stabilized inverse probability weighting and ordinary least squares
-## DiD with IPW
-Abadie (2005) inverse probability weighting DiD estimator
-## DiD with OR
-Outcome regression DiD estimator based on ordinary least squares
-## DiD with stabilized IPW
-Abadie (2005) inverse probability weighting DiD estimator with stabilized weights
+## Methods
+*method* is one of
+
+Method | Description
+------|------------
+**drimp** (default) | Sant’Anna and Zhao (2020a) Improved doubly robust DiD estimator based on inverse probability of tilting and weighted least squares
+**dripw** | Sant’Anna and Zhao (2020a) doubly robust DiD estimator based on stabilized inverse probability weighting and ordinary least squares
+**reg** | Outcome regression DiD estimator based on ordinary least squares
+**stdipw** | Abadie (2005) inverse probability weighting DiD estimator with stabilized weights
+**aipw** | Abadie (2005) inverse probability weighting DiD estimator
+**ipwra** |  Inverse-probability-weighted regression adjustment
+**all** | Compute all of the above 
+
+## Options
+Option | Description
+-------|------------
+**rc1** | Data is repeated cross section (default is panel)
+**boot** | Bootstrapped standard errors
+**reps**(*int*) | *int* number of bootstrap repetitions
+
 
 # Authors
 - Fernando Rios-Avila (Levy Economics Institute of Bard College), *maintainer*
