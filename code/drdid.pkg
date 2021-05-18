@@ -23,7 +23,6 @@ d
 
 f drdid.ado
 f drdid_logit.ado
-f drdid_rc.ado
 
 f example.do
 f test.do
