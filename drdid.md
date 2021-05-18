@@ -4,6 +4,7 @@
 
 - `drdid` *depvar* [*indepvars*] [*if*] [*in*] , [**ivar**(*varname*)] **time**(*varname*) **treatment**(*varname*) [**noisily** *method*  *rc1*]
 
+`drdid` implements the locally efficient doubly robust difference-in-differences (DiD) estimators for the average treatment effect proposed by Sant'Anna and Zhao (2020). The estimator combines inverse probability weighting and outcome regression estimators (also implemented in the package) to form estimators with more attractive statistical properties.
 # Options
 ## Parameters
 Parameter | Description
@@ -33,9 +34,9 @@ Option | Description
 
 ## Remarks
 
-The command may create additional variables in the dataset. `__att__` which stores the Recentered Influence function for the estimated statistic, and `__dy__` which stores the change in the outcome for an individual (when panel data is used). This variables are overwritten everytime the command is run.
+The command may create additional variables in the dataset. `__att__` stores the recentered influence function for the estimated statistic and `__dy__` stores the change in the outcome for an individual (when panel data is used). These variables are overwritten everytime the command is run.
 
-The command also returns as part of `e()`, the coefficient and variance covariance matrixes associated with all intermediate sets. 
+The command also returns, as part of `e()`, the coefficients and variance covariance matrixes associated with all intermediate sets. See `ereturn list` after running the command.
 
 # Examples
 ```

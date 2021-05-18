@@ -8,8 +8,10 @@
 {marker syntax}{...}
 {title:Syntax}
 
-{text}{phang2}{cmd:csdid} {it:depvar} [{it:indepvars}] [{it:if}] [{it:in}] [{it:iweight}], [{bf:ivar}({it:varname})] {bf:time}({it:varname}) {bf:TReatment}({it:varname}) [{bf:noisily} {it:method} {bf:rc1} {bf:boot} {bf:reps}({it:int})]{p_end}
+{text}{phang2}{cmd:drdid} {it:depvar} [{it:indepvars}] [{it:if}] [{it:in}] , [{bf:ivar}({it:varname})] {bf:time}({it:varname}) {bf:treatment}({it:varname}) [{bf:noisily} {it:method} {it:rc1}]{p_end}
 
+
+{pstd}{cmd:drdid} implements the locally efficient doubly robust difference-in-differences (DiD) estimators for the average treatment effect proposed by Sant'Anna and Zhao (2020). The estimator combines inverse probability weighting and outcome regression estimators (also implemented in the package) to form estimators with more attractive statistical properties.{p_end}
 
 
 {marker options}{...}
@@ -22,7 +24,7 @@
 {synoptset tabbed}{...}
 {synopthdr:Parameter}
 {synoptline}
-{synopt:{bf:ivar}}Variable indexing groups, e.g., {it:country}{p_end}
+{synopt:{bf:ivar}}Variable indexing groups, e.g., {it:country}. When {bf:ivar} is ignored, repeated cross section data is assumed.{p_end}
 {synopt:{bf:time}}Variable indexing time, e.g., {it:year}{p_end}
 {synopt:{bf:treatment}}Dummy variable indicating treatment, e.g., {it:reform}{p_end}
 {synoptline}
@@ -41,7 +43,7 @@
 {synopt:{bf:reg}}Outcome regression DiD estimator based on ordinary least squares{p_end}
 {synopt:{bf:stdipw}}Abadie (2005) inverse probability weighting DiD estimator with stabilized weights{p_end}
 {synopt:{bf:aipw}}Abadie (2005) inverse probability weighting DiD estimator{p_end}
-{synopt:{bf:ipwra}}Inverse-probability-weighted regression adjustment{p_end}
+{synopt:{bf:ipwra}}Inverse-probability-weighted regression adjustment (via teffects){p_end}
 {synopt:{bf:all}}Compute all of the above{p_end}
 {synoptline}
 
@@ -52,16 +54,23 @@
 {synoptset tabbed}{...}
 {synopthdr:Option}
 {synoptline}
-{synopt:{bf:rc1}}Data is repeated cross section (default is panel){p_end}
-{synopt:{bf:boot}}Bootstrapped standard errors{p_end}
-{synopt:{bf:reps}({it:int})}{it:int} number of bootstrap repetitions{p_end}
+{synopt:{bf:rc1}}When using repeated crossection data, the option {bf:rc1} requests the doubly robust, but not locally efficient, {bf:drimp} and {bf:dripw} estimators.{p_end}
+{synopt:{bf:nosily}}Request showing the estimation of all intermediate steps.{p_end}
 {synoptline}
+
+
+{marker remarks}{...}
+{dlgtab:Remarks}
+
+{pstd}The command may create additional variables in the dataset. {cmd:__att__} stores the recentered influence function for the estimated statistic and {cmd:__dy__} stores the change in the outcome for an individual (when panel data is used). These variables are overwritten everytime the command is run.{p_end}
+
+{pstd}The command also returns, as part of {cmd:e()}, the coefficients and variance covariance matrixes associated with all intermediate sets. See {cmd:ereturn list} after running the command.{p_end}
 
 
 {marker examples}{...}
 {title:Examples}
 
-{phang2}{cmd}. sysuse lalonde, clear
+{phang2}{cmd}. use https://friosavila.github.io/playingwithstata/drdid/lalonde.dta, clear
 
 
 {pstd}Panel estimator with default {bf:drimp} method{p_end}
