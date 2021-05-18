@@ -2,13 +2,13 @@
 
 # Syntax
 
-- `csdid` *depvar* [*indepvars*] [*if*] [*in*] [*iweight*], [**ivar**(*varname*)] **time**(*varname*) **TReatment**(*varname*) [**noisily** *method*  **rc1** **boot** **reps**(*int*)]
+- `drdid` *depvar* [*indepvars*] [*if*] [*in*] , [**ivar**(*varname*)] **time**(*varname*) **treatment**(*varname*) [**noisily** *method*  **rc1**]
 
 # Options
 ## Parameters
 Parameter | Description
 -------|------------
-**ivar**   | Variable indexing groups, e.g., *country*
+**ivar**   | Variable indexing groups, e.g., *country*. When **ivar** is ignored, repeated cross section data is assumed.
 **time**   | Variable indexing time, e.g., *year*
 **treatment** | Dummy variable indicating treatment, e.g., *reform*
 
@@ -22,19 +22,17 @@ Method | Description
 **reg** | Outcome regression DiD estimator based on ordinary least squares
 **stdipw** | Abadie (2005) inverse probability weighting DiD estimator with stabilized weights
 **aipw** | Abadie (2005) inverse probability weighting DiD estimator
-**ipwra** |  Inverse-probability-weighted regression adjustment
+**ipwra** |  Inverse-probability-weighted regression adjustment (via teffects)
 **all** | Compute all of the above 
 
 ## Options
 Option | Description
 -------|------------
-**rc1** | Data is repeated cross section (default is panel)
-**boot** | Bootstrapped standard errors
-**reps**(*int*) | *int* number of bootstrap repetitions
+**rc1** | When using repeated crossection data, the option **rc1** requests the doubly robust, but not locally efficient, **drimp** and **dripw** estimators. 
 
 # Examples
 ```
-sysuse lalonde, clear
+use https://friosavila.github.io/playingwithstata/drdid/lalonde.dta, clear
 ```
 Panel estimator with default **drimp** method
 ```
