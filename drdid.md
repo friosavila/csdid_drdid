@@ -2,7 +2,7 @@
 
 # Syntax
 
-- `drdid` *depvar* [*indepvars*] [*if*] [*in*] , [**ivar**(*varname*)] **time**(*varname*) **treatment**(*varname*) [**noisily** *method*  **rc1**]
+- `drdid` *depvar* [*indepvars*] [*if*] [*in*] , [**ivar**(*varname*)] **time**(*varname*) **treatment**(*varname*) [**noisily** *method*  *rc1*]
 
 # Options
 ## Parameters
@@ -29,6 +29,13 @@ Method | Description
 Option | Description
 -------|------------
 **rc1** | When using repeated crossection data, the option **rc1** requests the doubly robust, but not locally efficient, **drimp** and **dripw** estimators. 
+**nosily** | Request showing the estimation of all intermediate steps.
+
+## Remarks
+
+The command may create additional variables in the dataset. `__att__` which stores the Recentered Influence function for the estimated statistic, and `__dy__` which stores the change in the outcome for an individual (when panel data is used). This variables are overwritten everytime the command is run.
+
+The command also returns as part of `e()`, the coefficient and variance covariance matrixes associated with all intermediate sets. 
 
 # Examples
 ```
