@@ -1,4 +1,4 @@
 v 3
-d Fernando Rios-Avila (maintainer) and Asjad Naqvi
+d Fernando Rios-Avila (maintainer), Asjad Naqvi, and Pedro H. C. Sant'Anna
 d https://github.com/friosavila/csdid_drdid/tree/v0.1
 p drdid DRDID - Doubly Robust Difference-in-Differences Estimators

@@ -2,7 +2,7 @@ v 3
 
 d DRDID: Doubly Robust Difference-in-Differences Estimators (version 0.1)
 d
-d Authors: Fernando Rios-Avila (maintainer) and Asjad Naqvi
+d Authors: Fernando Rios-Avila (maintainer), Asjad Naqvi and Pedro H. C. Sant'Anna
 d Support: https://github.com/friosavila/csdid_drdid/tree/v0.1
 d
 d drdid implements the locally efficient doubly robust difference-in-differences (DiD) estimators 
@@ -16,9 +16,9 @@ d KW: treatment effects
 d KW: difference in differences
 d KW: att
 d
-d Requires: Stata version ??
+d Requires: Stata version 14
 d
-d Distribution-Date: 20210517
+d Distribution-Date: 20210518
 d
 
 f drdid.ado

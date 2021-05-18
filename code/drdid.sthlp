@@ -80,6 +80,7 @@
 
 {text}{phang2}Fernando Rios-Avila (Levy Economics Institute of Bard College), {it:maintainer}{p_end}
 {phang2}Asjad Naqvi (International Institute for Applied Systems Analysis){p_end}
+{phang2}Pedro H. C. Sant'Anna (Vanderbilt University){p_end}
 
 
 
@@ -89,7 +90,7 @@
 {pstd}You are free to use this package under the terms of its {browse "LICENSE":license}. If you use it, please cite {it:both} the original article and the software package in your work:{p_end}
 
 {text}{phang2}Sant’Anna, Pedro H. C., and Jun Zhao. 2020a. “Doubly Robust Difference-in-Differences Estimators.” {it:Journal of Econometrics} 219 (1): 101–22.{p_end}
-{phang2}Rios-Avila, Fernando and Asjad Naqvi. 2021. “DRDID: Doubly Robust Difference-in-Differences Estimators for Stata.” [Software] Available at {browse "https://github.com/friosavila/csdid_drdid/tree/v0.1":https://github.com/friosavila/csdid_drdid/tree/v0.1}{p_end}
+{phang2}Rios-Avila, Fernando, Asjad Naqvi and Pedro H. C. Sant'Anna. 2021. “DRDID: Doubly Robust Difference-in-Differences Estimators for Stata.” [Software] Available at {browse "https://github.com/friosavila/csdid_drdid/tree/v0.1":https://github.com/friosavila/csdid_drdid/tree/v0.1}{p_end}
 
 
 
