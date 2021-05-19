@@ -1,5 +1,9 @@
 ** Goal. Make the estimator modular. That way other options can be added
-*! v1.31 DRDID for Stata by FRA. Adding program for Bootstrap multiplier
+*! v1.35 DRDID for Stata 
+* Added by AN and adapted by FRA
+* Added Version control (v14), Variables are no longer left after DRDID. But option stub is added 
+* for later, as CSDID will use those
+* v1.31 DRDID for Stata by FRA. Adding program for Bootstrap multiplier
 * v1.3 DRDID for Stata by FRA Changing ATT RIF creation
 * v1.2 DRDID for Stata by FRA All Estimators are ready For panel and RC
 * Next help!
@@ -12,19 +16,59 @@
 * v0.2 DRDID for Stata by FRA Allows for Factor notation
 * v0.1 DRDID for Stata by FRA Typo with ID TIME
 * For panel only for now
-
+/*
+** This is for debugging, whe
 capture program drop _all
 mata:mata clear
+*/
 program define drdid, eclass sortpreserve
+version 14
+
+syntax  [anything(everything)] [iw] [if] [in], [*]
+
+	if replay() {
+		if "`e(cmd)'" == "drdid" {
+			syntax [anything] [, EForm(string) Level(real 95) * ]
+			eret di, eform(`eform') level(`level') `options'
+		}
+		else {
+		    display in red "last estimates not found"
+			error 301
+		}
+    }
+	else {
+	    drdid_wh `0'
+	}
+	if runiform()<.001 {
+		easter_egg
+	}
+end
+
+program define drdid_wh, eclass sortpreserve
 	syntax varlist(fv ) [if] [in] [iw], [ivar(varname)] time(varname) TReatment(varname) ///
-	[noisily drimp dripw reg stdipw ipw ipwra all  rc1 boot reps(int 999) ///
-	bootype(int 1)  /// Hidden option
+	[noisily drimp dripw reg stdipw ipw ipwra all  rc1 ///
+	boot reps(int 999) bwtype(int 1)  /// Hidden option
+	stub(name) replace /// to avoid overwritting
 	]  
 	local 00 `0'
 	marksample touse
 	markout `touse' `ivar' `time' `treatment'
-
+	**# Verifies if ALL variables exist. 
+/*	if "`stub'"=="" {
+		loc stub "__"
+		
+	}*/
+	
+	cap unab allnew: `stub'att* 
+	if "`stub'"!="" & "`replace'"=="" & "`allnew'"!="" {
+		foreach v of var `allnew' {
+			conf new var `v'
+		}
+	}
+	*** Add Char to variables. They will be ours. Perhaps for CSDID
+	
 	numlist "`reps'",  integer max(1) range(>0) 
+	
 	
 	** Which option 
 	if "`drimp'`dripw'`reg'`stdipw'`ipw'`ipwra'`all'"=="" {
@@ -62,11 +106,10 @@ program define drdid, eclass sortpreserve
 	}
 	else {
 		tempvar wgt
-		gen double `wgt'`exp'
-		sum `wgt' if `touse' & `tmt'==0, meanonly
-		replace `wgt'=`wgt'/r(mean)
+		qui:gen double `wgt'`exp'
+		qui:sum `wgt' if `touse' & `tmt'==0, meanonly
+		qui:replace `wgt'=`wgt'/r(mean)
 	}
-	
 	
 	drop `vals'
 	qui:bysort `touse' `treatment': gen byte `vals' = (_n == 1) * `touse'
@@ -74,6 +117,7 @@ program define drdid, eclass sortpreserve
  
 	if  r(sum)!=2 {
 	    display in red "Treatment variable can only have 2 values in the working sample"
+		display "The lower value identifies the control group, whereas the higher one identifies the treated group."
 		error 1
 	}
 	else {
@@ -81,88 +125,105 @@ program define drdid, eclass sortpreserve
 		qui:egen byte `trt'=group(`treatment') if `touse'
 		qui:replace `trt'=`trt'-1
 	}
+	
+	**# Verify treatment and prepost
+	drop `vals'
+	bysort `touse' `trt' `tmt' :gen byte `vals' = (_n == 1) * `touse'
+	sum `vals' if `touse', meanonly
+	if  r(sum)!=4 {
+	    display in red "You do not have a 2x2 design. Verify that you have both Treatment and control groups in both the Pre and post periods"
+		error 1
+	}
+	
+	
 	**# for panel estimator
 	tempvar tag
 	qui:bysort `touse' `ivar' (`time'):gen byte `tag'=_n if `touse'
+	
+	**# Here we collect all options
+	** This are all the options send to DRDID 
+	
+	local 01 touse(`touse') tmt(`tmt') trt(`trt') y(`y') xvar(`xvar') `isily' ivar(`ivar') tag(`tag') weight(`wgt') stub(`stub') `boot' reps(`reps') bwtype(`bwtype')
+	
 	** Default will be IPT 
  	if "`drimp'"!="" {
-		drdid_imp , touse(`touse') tmt(`tmt') trt(`trt') y(`y') xvar(`xvar') `isily' ivar(`ivar') tag(`tag') weight(`wgt')
+		drdid_imp , `01'
 	}
 	else if "`dripw'"!="" {
 		// DR ipw asjad
-		drdid_dripw , touse(`touse') tmt(`tmt') trt(`trt') y(`y') xvar(`xvar') `isily' ivar(`ivar') tag(`tag') weight(`wgt')
+		drdid_dripw , `01'
 	}
 	else if "`ipw'"!="" {
 		// abadies Done
-		drdid_aipw , touse(`touse') tmt(`tmt') trt(`trt') y(`y') xvar(`xvar') `isily' ivar(`ivar') tag(`tag') weight(`wgt')
+		drdid_aipw , `01'
 	}
 	else if "`reg'"!="" {
-		drdid_reg , touse(`touse') tmt(`tmt') trt(`trt') y(`y') xvar(`xvar') `isily' ivar(`ivar') tag(`tag') weight(`wgt')
+		drdid_reg , `01'
 	}
 	else if "`stdipw'"!="" {
-		drdid_stdipw , touse(`touse') tmt(`tmt') trt(`trt') y(`y') xvar(`xvar') `isily' ivar(`ivar') tag(`tag') weight(`wgt')
+		drdid_stdipw , `01'
 	}
 	else if "`ipwra'"!="" {
 		//only one without modeling
-		drdid_sipwra , touse(`touse') tmt(`tmt') trt(`trt') y(`y') xvar(`xvar') `isily' ivar(`ivar') tag(`tag') weight(`wgt')
+		drdid_sipwra , `01'
 	}
 	
 	else if "`all'"!="" {
 	** DR 		
 		tempvar bb VV
-	    qui:drdid_dripw , touse(`touse') tmt(`tmt') trt(`trt') y(`y') xvar(`xvar') `isily' ivar(`ivar') tag(`tag') weight(`wgt')
+	    qui:drdid_dripw , `01'
 		matrix `bb' = nullmat(`bb')\e(b)
 		matrix `VV' = nullmat(`VV')\e(V)
-		local clname dripw
-		capture drop __att_dripw
-		ren __att__  __att_dripw
+		local clname dripw	
+		**capture drop `stub'att_dripw
+		*ren `stub'att  `stub'att_dripw
 		if "`ivar'"=="" {
-		    qui:drdid_dripw , touse(`touse') tmt(`tmt') trt(`trt') y(`y') xvar(`xvar') `isily' ivar(`ivar') tag(`tag') weight(`wgt') rc1
+		    qui:drdid_dripw , `01' rc1 
 			matrix `bb' = nullmat(`bb')\e(b)
 			matrix `VV' = nullmat(`VV')\e(V)
 			local clname `clname' dripw_rc1
-			capture drop __att_dripwrc
-			clonevar __att_dripwrc=__att__
+			**capture drop `stub'att_dripwrc
+			*clonevar `stub'att_dripwrc=`stub'att
 		}
 	** DRIMP	
-	    qui:drdid_imp , touse(`touse') tmt(`tmt') trt(`trt') y(`y') xvar(`xvar') `isily' ivar(`ivar') tag(`tag') weight(`wgt')
+	    qui:drdid_imp , `01'
 		matrix `bb' = nullmat(`bb')\e(b)
 		matrix `VV' = nullmat(`VV')\e(V)
 		local clname `clname' drimp
-		capture drop __att_drimp
-		ren __att__  __att_drimp
+		**capture drop `stub'att_drimp
+		*ren `stub'att  `stub'att_drimp
 		
 		if "`ivar'"=="" {
-		    qui:drdid_imp , touse(`touse') tmt(`tmt') trt(`trt') y(`y') xvar(`xvar') `isily' ivar(`ivar') tag(`tag') weight(`wgt') rc1
+		    qui:drdid_imp , `01' rc1 
 			matrix `bb' = nullmat(`bb')\e(b)
 			matrix `VV' = nullmat(`VV')\e(V)
 			local clname `clname' drimp_rc1
-			capture drop __att_drimprc
-			ren __att__  __att_drimprc
+			**capture drop `stub'att_drimprc
+			*ren `stub'att  `stub'att_drimprc
 		}
 	** REG
-		qui:drdid_reg , touse(`touse') tmt(`tmt') trt(`trt') y(`y') xvar(`xvar') `isily' ivar(`ivar') tag(`tag') weight(`wgt')
+		qui:drdid_reg , `01'
 		matrix `bb' = nullmat(`bb')\e(b)
 		matrix `VV' = nullmat(`VV')\e(V)
 		local clname `clname' reg
-		capture drop __att_reg
-		ren __att__  __att_reg
+		**capture drop `stub'att_reg
+		*ren `stub'att  `stub'att_reg
 	** TRAD_IPW	
-	    qui:drdid_aipw , touse(`touse') tmt(`tmt') trt(`trt') y(`y') xvar(`xvar') `isily' ivar(`ivar') tag(`tag') weight(`wgt')
+	    qui:drdid_aipw , `01'
 		matrix `bb' = nullmat(`bb')\e(b)
 		matrix `VV' = nullmat(`VV')\e(V)
 		local clname `clname' ipw
-		capture drop __att_ipw
-		ren __att__  __att_ipw
+		**capture drop `stub'att_ipw
+		*ren `stub'att  `stub'att_ipw
 	** STD IPW	
-		qui:drdid_stdipw , touse(`touse') tmt(`tmt') trt(`trt') y(`y') xvar(`xvar') `isily' ivar(`ivar') tag(`tag') weight(`wgt')
+		qui:drdid_stdipw , `01'
 		matrix `bb' = nullmat(`bb')\e(b)
 		matrix `VV' = nullmat(`VV')\e(V)
-		capture drop __att_stdipw
-		ren __att__  __att_stdipw
+		**capture drop `stub'att_stdipw
+		*ren `stub'att  `stub'att_stdipw
 		local clname `clname' stdipw
 		if "`ivar'"!="" {
-			qui:drdid_sipwra , touse(`touse') tmt(`tmt') trt(`trt') y(`y') xvar(`xvar') `isily' ivar(`ivar') tag(`tag') weight(`wgt')
+			qui:drdid_sipwra , `01'
 			matrix `bb' = nullmat(`bb')\e(b)
 			matrix `VV' = nullmat(`VV')\e(V)
 			local clname `clname' sipwra
@@ -175,7 +236,7 @@ program define drdid, eclass sortpreserve
 		matrix rowname `VV' = `clname'
 		ereturn post `bb' `VV'
 		ereturn display
-		*mean __att_*
+		*mean `stub'att_*
 		display "{p}Note: This table is provided for comparison across estimations only. You cannot use them to compare across estimates across different estimators{p_end}"
 		display "{cmd:dripw} :Doubly Robust IPW"
 		display "{cmd:drimp} :Doubly Robust Improved estimator"
@@ -193,10 +254,30 @@ program define drdid, eclass sortpreserve
 
 end
 
+
+program define easter_egg
+		display "{p}This is just for fun. Its my attempt to an Easter Egg within my program. {p_end}" _n /// 
+		"{p} Also, if you are reading this, it means you are lucky," ///
+		"only 0.1% of people using this program will see this message. {p_end}" _n ///
+		"{p} This program was inspired by challenge post by Scott Cunningham. Unforunately, I arrived late due to " ///
+		"lack of understanding. I tried to do CSDID (RUN) before learning DRDID (walk). {p_end} " _n  ///
+		"{p} Asjad, was the first person who started to properly implement the code in Stata. I got inspired on his work that, " ///
+		"Reread the paper, and voala. Everything fit in the form of the first version of this code. {p_end} " _n ///
+		"{p} Many thanks go to Pedro, who spend a lot of time explaining details that would otherwise would remain confusing (he is the author fo the original paper after all; {p_end} " _n ///
+		"{p} to Miklos, who pushed us to mantain a Github repository for this program. He is taking the side of the user {p_end}" ///
+		"{p} To Enrique Pinzon, who helped from the shadows, for a smooth transition from R to Stata (Yay Stata) {p_end}" _n ///
+		"{p} and Austin, who was working in parallel when Asjad and I took the lead on this. {p_end}"
+end
+////////////////////////////////////////////////////////////////////////////////
+*** FIRST
 **# Abadies
 program define drdid_aipw, eclass
-syntax, touse(str) trt(str) y(str) [xvar(str)] [noisily] [ivar(str)] [tag(str)] tmt(str) [weight(str)]
+syntax, touse(str) trt(str) y(str) [xvar(str)] [noisily] [ivar(str)] [tag(str)] tmt(str) [weight(str)] [stub(name) ] ///
+	[ boot reps(int 999) bwtype(int 1) ] // Hidden option
 	** PS
+	
+	tempvar att
+	qui:gen double `att'=.
 	if "`ivar'"!="" {
 	    *display "Estimating IPW logit"
 		qui {		
@@ -207,24 +288,25 @@ syntax, touse(str) trt(str) y(str) [xvar(str)] [noisily] [ivar(str)] [tag(str)] 
 			matrix `psb'=e(b)
 			matrix `psV'=e(V)
 			** _delta
-			capture drop __dy__
-			bysort `touse' `ivar' (`tmt'):gen double __dy__=`y'[2]-`y'[1] if `touse' 
+			tempvar __dy__
+			bysort `touse' `ivar' (`tmt'):gen double `__dy__'=`y'[2]-`y'[1] if `touse' 
 			** Reg for outcome 
-			*`isily' reg __dy__ `xvar' if `trt'==0 
+			*`isily' reg `__dy__' `xvar' if `trt'==0 
 			*tempname regb regV
 			*matrix `regb'=e(b)
 			*matrix `regV'=e(V)
 			tempvar xb
 			*predict double `xb'
-			capture drop __att__
-			gen double __att__=.
+			
 			tempvar touse2 
 			gen byte `touse2'=`touse'*(`tmt'==0)
 		    tempname b V
-			mata:ipw_abadie_panel("__dy__","`xvar' ","`xb'","`psb' ","`psV' ","`psxb'","`trt'","`tmt'","`touse2'","__att__","`b'","`V'","`weight'")
-			*replace __att__=. if `tmt'==1
+			mata:ipw_abadie_panel("`__dy__'","`xvar' ","`xb'","`psb' ","`psV' ","`psxb'","`trt'","`tmt'","`touse2'","`att'","`b'","`V'","`weight'")
+			
+			*replace `stub'att=. if `tmt'==1
+			
 			if "`boot'"!="" {
-			    mata:mboot("__att__", "`touse2'", "`V'", `reps', `bwtype')
+			    mata:mboot("`att'", "`touse2'", "`V'", `reps', `bwtype')
 			}
 			
 			matrix colname `b'=__att__
@@ -251,12 +333,11 @@ syntax, touse(str) trt(str) y(str) [xvar(str)] [noisily] [ivar(str)] [tag(str)] 
 			matrix `psb'=e(b)
 			matrix `psV'=e(V)
 		    tempname b V
-			capture drop __att__
-			gen double __att__=.
-			mata:ipw_abadie_rc("`y'","`xvar' ","`tmt'","`trt'","`psV'","`psxb'","`weight'","`touse'","__att__","`b'","`V'")
+ 
+			mata:ipw_abadie_rc("`y'","`xvar' ","`tmt'","`trt'","`psV'","`psxb'","`weight'","`touse'","`att'","`b'","`V'")
 			** Wbootstrap Multipler
 			if "`boot'"!="" {
-			    mata:mboot("__att__", "`touse'", "`V'", `reps', `bwtype')
+			    mata:mboot("`att'", "`touse'", "`V'", `reps', `bwtype')
 			}
 			matrix colname `b' =__att__
 			matrix colname `V' =__att__
@@ -272,14 +353,23 @@ syntax, touse(str) trt(str) y(str) [xvar(str)] [noisily] [ivar(str)] [tag(str)] 
 		ereturn display
 		ereturn matrix ipwb `psb'
 		ereturn matrix ipwV `psV'
+		
 	}
+** if STUB is used, then RIF is saved		
+	if "`stub'"!="" {
+		qui:capture drop `stub'att
+		qui:gen double `stub'att=`att'
+	}	
 end
 
 ** can be more efficient
 **#drdid_dripw
 program define drdid_dripw, eclass
-syntax, touse(str) trt(str) y(str) [xvar(str)] [noisily] [ivar(str)] [tag(str)] tmt(str) [weight(str) rc1]
+syntax, touse(str) trt(str) y(str) [xvar(str)] [noisily] [ivar(str)] [tag(str)] tmt(str) [weight(str) rc1] [stub(name)] ///
+	[ boot reps(int 999) bwtype(int 1) ] // Hidden option
 	** PS
+	tempvar att
+	qui:gen double `att'=.
 	if "`ivar'"!="" {
 	    *display "Estimating IPW logit"
 		qui {		
@@ -290,25 +380,25 @@ syntax, touse(str) trt(str) y(str) [xvar(str)] [noisily] [ivar(str)] [tag(str)] 
 			matrix `psb'=e(b)
 			matrix `psV'=e(V)
 			** _delta
-			capture drop __dy__
-			bysort `touse' `ivar' (`tmt'):gen double __dy__=`y'[2]-`y'[1] if `touse'
+			tempvar __dy__
+			bysort `touse' `ivar' (`tmt'):gen double `__dy__'=`y'[2]-`y'[1] if `touse'
 			** Reg for outcome 
  
-			`isily' reg __dy__ `xvar' if `touse' & `trt'==0  & `tmt'==0 [iw = `weight']
+			`isily' reg `__dy__' `xvar' if `touse' & `trt'==0  & `tmt'==0 [iw = `weight']
 			tempname regb regV
 			matrix `regb'=e(b)
 			matrix `regV'=e(V)
 			tempvar xb
 			predict double `xb'
-			capture drop __att__
-			gen double __att__=.
+			*capture drop `stub'att
+			*gen double `stub'att=.
 			tempvar touse2
 			gen byte `touse2'=`touse'*(`tmt'==0)
 		    tempname b V
-			mata:drdid_panel("__dy__","`xvar' ","`xb'","`psb'","`psV'","`psxb'","`trt'","`tmt'","`touse2'","__att__","`b'","`V'","`weight'")
-			**replace __att__=. if `tmt'==1
+			mata:drdid_panel("`__dy__'","`xvar' ","`xb'","`psb'","`psV'","`psxb'","`trt'","`tmt'","`touse2'","`att'","`b'","`V'","`weight'")
+			**replace `stub'att=. if `tmt'==1
 			if "`boot'"!="" {
-			    mata:mboot("__att__", "`touse2'", "`V'", `reps', `bwtype')
+			    mata:mboot("`att'", "`touse2'", "`V'", `reps', `bwtype')
 			}
 			matrix colname `b'=__att__
 			matrix colname `V'=__att__
@@ -338,8 +428,8 @@ syntax, touse(str) trt(str) y(str) [xvar(str)] [noisily] [ivar(str)] [tag(str)] 
 			matrix `psb'=e(b)
 			matrix `psV'=e(V)
 		    tempname b V
-			capture drop __att__
-			gen double __att__=.
+			*capture drop `stub'att
+			*gen double `stub'att=.
 			**ols 
 			tempvar y00 y01 y10 y11
 			tempname regb00 regb01 regb10 regb11 
@@ -361,15 +451,15 @@ syntax, touse(str) trt(str) y(str) [xvar(str)] [noisily] [ivar(str)] [tag(str)] 
 			matrix `regb11'=e(b)
 			matrix `regV11'=e(V)
 			if "`rc1'"=="" {
-				mata:drdid_rc("`y'","`y00' `y01' `y10' `y11'","`xvar' ","`tmt'","`trt'","`psV'","`psxb'","`weight'","`touse'","__att__","`b'","`V'")
+				mata:drdid_rc("`y'","`y00' `y01' `y10' `y11'","`xvar' ","`tmt'","`trt'","`psV'","`psxb'","`weight'","`touse'","`att'","`b'","`V'")
 			}
 			else {
-			    mata:drdid_rc1("`y'","`y00' `y01' `y10' `y11'","`xvar' ","`tmt'","`trt'","`psV'","`psxb'","`weight'","`touse'","__att__","`b'","`V'")
+			    mata:drdid_rc1("`y'","`y00' `y01' `y10' `y11'","`xvar' ","`tmt'","`trt'","`psV'","`psxb'","`weight'","`touse'","`att'","`b'","`V'")
 				local nle "Not Locally efficient"
 			}
 			////
 			if "`boot'"!="" {
-			    mata:mboot("__att__", "`touse'", "`V'", `reps', `bwtype')
+			    mata:mboot("`att'", "`touse'", "`V'", `reps', `bwtype')
 			}			
 			matrix colname `b' =__att__
 			matrix colname `V' =__att__
@@ -396,21 +486,28 @@ syntax, touse(str) trt(str) y(str) [xvar(str)] [noisily] [ivar(str)] [tag(str)] 
 		ereturn matrix regV11 `regV11'
  
 	}
+	if "`stub'"!="" {
+		qui:capture drop `stub'att
+		qui:gen double `stub'att=`att'
+	}	
 end
 
 **#drdid_reg
 program define drdid_reg, eclass
-syntax, touse(str) trt(str) y(str) [xvar(str)] [noisily] [ivar(str)] [tag(str)] tmt(str) [weight(str)]
+syntax, touse(str) trt(str) y(str) [xvar(str)] [noisily] [ivar(str)] [tag(str)] tmt(str) [weight(str)] [stub(name)] ///
+[ boot reps(int 999) bwtype(int 1) ] // Hidden option
 ** Simple application. But right now without RIF
+	tempvar att
+	qui:gen double `att'=.
 	if "`ivar'"!="" {
 		qui {
-			capture drop __dy__
-			bysort `touse' `ivar' (`tmt'):gen double __dy__=`y'[2]-`y'[1] if `touse' 
-			`isily' reg __dy__ `xvar' if `touse' & `trt'==0 & `tmt'==0  [iw = `weight']
+			tempvar __dy__
+			bysort `touse' `ivar' (`tmt'):gen double `__dy__'=`y'[2]-`y'[1] if `touse' 
+			`isily' reg `__dy__' `xvar' if `touse' & `trt'==0 & `tmt'==0  [iw = `weight']
 			tempvar xb
 			predict double `xb'
-			capture drop __att__
-			gen double __att__=.
+			*capture drop `stub'att
+			*gen double `stub'att=.
 			//////////////////////
 			tempname regb regV
 			matrix `regb'=e(b)
@@ -418,10 +515,10 @@ syntax, touse(str) trt(str) y(str) [xvar(str)] [noisily] [ivar(str)] [tag(str)] 
 			tempname b V
 			tempvar touse2
 			gen byte `touse2'=`touse'*(`tmt'==0)
-			mata:reg_panel("__dy__", "`xvar' ", "`xb' " , "`trt'", "`tmt'" , "`touse2'","__att__","`b'","`V'","`weight'") 
-			*replace __att__=. if `tmt'==1
+			mata:reg_panel("`__dy__'", "`xvar' ", "`xb' " , "`trt'", "`tmt'" , "`touse2'","`att'","`b'","`V'","`weight'") 
+			*replace `stub'att=. if `tmt'==1
 			if "`boot'"!="" {
-			    mata:mboot("__att__", "`touse2'", "`V'", `reps', `bwtype')
+			    mata:mboot("`att'", "`touse2'", "`V'", `reps', `bwtype')
 			}			
 			matrix colname `b' = __att__
 			matrix colname `V' = __att__
@@ -450,11 +547,11 @@ syntax, touse(str) trt(str) y(str) [xvar(str)] [noisily] [ivar(str)] [tag(str)] 
 			matrix `regb01' = e(b)
 			matrix `regV01' = e(V)
 			tempname b V
-			capture drop __att__
-			gen double __att__=.
-			noisily mata:reg_rc("`y'","`y00' `y01'","`xvar' ","`tmt'","`trt'","`weight'","`touse'","__att__","`b'","`V'")
+			*capture drop `stub'att
+			*gen double `stub'att=.
+			noisily mata:reg_rc("`y'","`y00' `y01'","`xvar' ","`tmt'","`trt'","`weight'","`touse'","`att'","`b'","`V'")
 			if "`boot'"!="" {
-			    mata:mboot("__att__", "`touse'", "`V'", `reps', `bwtype')
+			    mata:mboot("`att'", "`touse'", "`V'", `reps', `bwtype')
 			}			
 			matrix colname `b' =__att__
 			matrix colname `V' =__att__
@@ -472,12 +569,20 @@ syntax, touse(str) trt(str) y(str) [xvar(str)] [noisily] [ivar(str)] [tag(str)] 
 		display "DiD with OR for RC" _n "Outcome regression DiD estimator based on ordinary least squares"
 		ereturn display
 	}
-
+	
+	if "`stub'"!="" {
+		qui:capture drop `stub'att
+		qui:gen double `stub'att=`att'
+	}
+	
 end
 
 **#drdid_sipw
 program define drdid_stdipw, eclass
-syntax, touse(str) trt(str) y(str) [xvar(str)] [noisily] [ivar(str)] [tag(str)] tmt(str) [weight(str)]
+syntax, touse(str) trt(str) y(str) [xvar(str)] [noisily] [ivar(str)] [tag(str)] tmt(str) [weight(str)] [stub(name)] ///
+[ boot reps(int 999) bwtype(int 1) ] // Hidden option
+	tempvar att
+	qui:gen double `att'=.
 ** Simple application. But right now without RIF
 	if "`ivar'"!="" {
 	    *display "Estimating IPW logit"
@@ -489,28 +594,28 @@ syntax, touse(str) trt(str) y(str) [xvar(str)] [noisily] [ivar(str)] [tag(str)] 
 			matrix `psb'=e(b)
 			matrix `psV'=e(V)
 			** _delta
-			capture drop __dy__
-			bysort `touse' `ivar' (`tmt'):gen double __dy__=`y'[2]-`y'[1] if `touse'
+			tempvar __dy__
+			bysort `touse' `ivar' (`tmt'):gen double `__dy__'=`y'[2]-`y'[1] if `touse'
 			** Reg for outcome 
 		}
 		*display "Estimating Counterfactual Outcome"	
 		qui {
-			*`isily' reg __dy__ `xvar' if `trt'==0 
+			*`isily' reg `__dy__' `xvar' if `trt'==0 
 			*tempname regb regV
 			*matrix `regb'=e(b)
 			*matrix `regV'=e(V)
 			tempvar xb
 			*predict double `xb'
-			capture drop __att__
-			gen double __att__=.
+			*capture drop `stub'att
+			*gen double `stub'att=.
 		
 		    tempname b V		
 			tempvar touse2
 			gen byte `touse2'=`touse'*(`tmt'==0)
-			noisily mata:std_ipw_panel("__dy__","`xvar' ","`xb'","`psb'","`psV'","`psxb'","`trt'","`tmt'","`touse2'","__att__","`b'","`V'","`weight'")
-			*replace __att__=. if `tmt'==1
+			noisily mata:std_ipw_panel("`__dy__'","`xvar' ","`xb'","`psb'","`psV'","`psxb'","`trt'","`tmt'","`touse2'","`att'","`b'","`V'","`weight'")
+			*replace `stub'att=. if `tmt'==1
 			if "`boot'"!="" {
-			    mata:mboot("__att__", "`touse2'", "`V'", `reps', `bwtype')
+			    mata:mboot("`att'", "`touse2'", "`V'", `reps', `bwtype')
 			}			
 			matrix colname `b'=__att__
 			matrix colname `V'=__att__
@@ -537,11 +642,11 @@ syntax, touse(str) trt(str) y(str) [xvar(str)] [noisily] [ivar(str)] [tag(str)] 
 			matrix `psb'=e(b)
 			matrix `psV'=e(V)
 			tempname b V
-			capture drop __att__
-			gen __att__=.
-			mata:std_ipw_rc("`y'","`xvar' ","`tmt'","`trt'","`psV'","`psxb'","`weight'","`touse'","__att__","`b'","`V'")
+			*capture drop `stub'att
+			gen `stub'att=.
+			mata:std_ipw_rc("`y'","`xvar' ","`tmt'","`trt'","`psV'","`psxb'","`weight'","`touse'","`att'","`b'","`V'")
 			if "`boot'"!="" {
-			    mata:mboot("__att__", "`touse'", "`V'", `reps', `bwtype')
+			    mata:mboot("`att'", "`touse'", "`V'", `reps', `bwtype')
 			}			
 			matrix colname `b' =__att__
 			matrix colname `V' =__att__
@@ -558,12 +663,21 @@ syntax, touse(str) trt(str) y(str) [xvar(str)] [noisily] [ivar(str)] [tag(str)] 
 		ereturn matrix ipwb `psb'
 		ereturn matrix ipwV `psV'
 	}
+	
+	if "`stub'"!="" {
+		qui:capture drop `stub'att
+		qui:gen double `stub'att=`att'
+	}
+	
 end
 
 // only one without Mata writting. Consider working on it
 **#drdid_sipwra
 program define drdid_sipwra, eclass
-syntax, touse(str) trt(str) y(str) [xvar(str)] [noisily] [ivar(str)] [tag(str)] tmt(str) [weight(str)]
+syntax, touse(str) trt(str) y(str) [xvar(str)] [noisily] [ivar(str)] [tag(str)] tmt(str) [weight(str)] [stub(name)] ///
+[ boot reps(int 999) bwtype(int 1) ] // Hidden option
+	tempvar att
+	qui:gen double `att'=.
 ** Simple application. But right now without RIF
    if "`ivar'"=="" {
        display "Estimator not implemented for RC"
@@ -572,12 +686,12 @@ syntax, touse(str) trt(str) y(str) [xvar(str)] [noisily] [ivar(str)] [tag(str)] 
    }
    else {
 	qui {
-		capture drop __dy__
-		bysort `touse' `ivar' (`tmt'):gen double __dy__=`y'[2]-`y'[1] if `touse'
+		tempvar __dy__
+		bysort `touse' `ivar' (`tmt'):gen double `__dy__'=`y'[2]-`y'[1] if `touse'
 		tempvar sy
-		sum __dy__ if  `touse'
+		sum `__dy__' if  `touse'
 		local scl = r(mean)
-		gen double `sy'= __dy__/`scl'
+		gen double `sy'= `__dy__'/`scl'
 		
 		qui:teffects ipwra (`sy' `xvar') (`trt' `xvar', logit) if `touse' & `tmt'==0 [iw = `weight'] , atet 
 		tempname b V aux
@@ -591,13 +705,20 @@ syntax, touse(str) trt(str) y(str) [xvar(str)] [noisily] [ivar(str)] [tag(str)] 
 		ereturn post `b' `V'
 	}
 		ereturn display	
-   }	
+   }
+
+	if "`stub'"!="" {
+		qui:capture drop `stub'att
+		qui:gen double `stub'att=`att'
+	}   
 end
  
-** Needs rewritting 
 **#drdid_dript
 program define drdid_imp, eclass sortpreserve
-syntax, touse(str) trt(str) y(str) [xvar(str)] [noisily] [ivar(str)] [tag(str)] tmt(str) [weight(str) rc1]
+syntax, touse(str) trt(str) y(str) [xvar(str)] [noisily] [ivar(str)] [tag(str)] tmt(str) [weight(str) rc1] [stub(name)] ///
+[ boot reps(int 999) bwtype(int 1) ] // Hidden option
+	tempvar att
+	qui:gen double `att'=.
 	if "`ivar'"!="" {
 	   	*display "Estimating IPT"
 		qui {
@@ -613,8 +734,8 @@ syntax, touse(str) trt(str) y(str) [xvar(str)] [noisily] [ivar(str)] [tag(str)] 
 			tempvar psxb
 			predict double `psxb',xb
 			** Determine dy and dyhat
-			capture drop __dy__
-			bysort `touse' `ivar' (`tmt'):gen double __dy__=`y'[2]-`y'[1] if `touse'
+			tempvar __dy__
+			bysort `touse' `ivar' (`tmt'):gen double `__dy__'=`y'[2]-`y'[1] if `touse'
 
 			** determine weights
 			tempvar w0 
@@ -626,23 +747,23 @@ syntax, touse(str) trt(str) y(str) [xvar(str)] [noisily] [ivar(str)] [tag(str)] 
 			** estimating dy_hat for a counterfactual
  	
 			tempname regb regV
-			`isily' reg __dy__ `xvar' [w=`w0'] if `trt'==0 & `tmt'==0,
+			`isily' reg `__dy__' `xvar' [w=`w0'] if `trt'==0 & `tmt'==0,
 			matrix `regb' =e(b)
 			matrix `regV' =e(V)
 			tempvar xb
 			qui:predict double `xb'
 			tempname b V
-			capture drop __att__
-			gen double __att__=.
+			*capture drop `stub'att
+			*gen double `stub'att=.
 			tempvar touse2
 			gen byte `touse2'=`touse'*(`tmt'==0)
 			
-			noisily mata:drdid_imp_panel("__dy__","`xvar' ","`xb'","`psb'","`psV'","`psxb'","`trt'","`tmt'","`touse2'","__att__","`b'","`V'","`weight'")	
+			noisily mata:drdid_imp_panel("`__dy__'","`xvar' ","`xb'","`psb'","`psV'","`psxb'","`trt'","`tmt'","`touse2'","`att'","`b'","`V'","`weight'")	
 			
 			if "`boot'"!="" {
-			    mata:mboot("__att__", "`touse2'", "`V'", `reps', `bwtype')
+			    mata:mboot("`att'", "`touse2'", "`V'", `reps', `bwtype')
 			}			
-			*replace __att__=. if `tmt'==1
+			*replace `stub'att=. if `tmt'==1
 			matrix colname `b'=__att__
 			matrix colname `V'=__att__
 			matrix rowname `V'=__att__
@@ -693,20 +814,20 @@ syntax, touse(str) trt(str) y(str) [xvar(str)] [noisily] [ivar(str)] [tag(str)] 
 			predict double `y11'
 			matrix `regb11' =e(b)
 			matrix `regV11' =e(V)
-			capture drop __att__
-			gen double __att__=.
+			*capture drop `stub'att
+			*gen double `stub'att=.
 			tempname b V
 			
 			if "`rc1'"=="" {
-				mata:drdid_imp_rc("`y'","`y00' `y01' `y10' `y11'","`xvar' ","`tmt'","`trt'","`iptV'","`psxb'","`weight'","`touse'","__att__","`b'","`V'")
+				mata:drdid_imp_rc("`y'","`y00' `y01' `y10' `y11'","`xvar' ","`tmt'","`trt'","`iptV'","`psxb'","`weight'","`touse'","`att'","`b'","`V'")
 			}
 			else {
-			    mata:drdid_imp_rc1("`y'","`y00' `y01' `y10' `y11'","`xvar' ","`tmt'","`trt'","`iptV'","`psxb'","`weight'","`touse'","__att__","`b'","`V'")
+			    mata:drdid_imp_rc1("`y'","`y00' `y01' `y10' `y11'","`xvar' ","`tmt'","`trt'","`iptV'","`psxb'","`weight'","`touse'","`att'","`b'","`V'")
 				local nle "Not Locally efficient"
 			}
 			
 			if "`boot'"!="" {
-			    mata:mboot("__att__", "`touse2'", "`V'", `reps', `bwtype')
+			    mata:mboot("`att'", "`touse2'", "`V'", `reps', `bwtype')
 			}			
 			matrix colname `b'=__att__
 			matrix colname `V'=__att__
@@ -731,6 +852,10 @@ syntax, touse(str) trt(str) y(str) [xvar(str)] [noisily] [ivar(str)] [tag(str)] 
 		ereturn matrix regb11 `regb11'
 		ereturn matrix regV11 `regV11'
 
+	}
+	if "`stub'"!="" {
+		qui:capture drop `stub'att
+		qui:gen double `stub'att=`att'
 	}
 end
   
