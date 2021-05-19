@@ -23,13 +23,11 @@ d
 d Required packages:
 d 	drdid
 d
-d Distribution-Date: 20210511
+d Distribution-Date: 20210519
 d
 
 f csdid.ado
 f drdid.ado
-f drdid_logit.ado
-f drdid_rc.ado
 
 f example.do
 f test.do
