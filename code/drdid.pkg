@@ -22,7 +22,6 @@ d Distribution-Date: 20210518
 d
 
 f drdid.ado
-f drdid_logit.ado
 
 f example.do
 f test.do

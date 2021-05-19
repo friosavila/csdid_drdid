@@ -42,7 +42,7 @@
 {synopt:{bf:dripw}}Sant’Anna and Zhao (2020a) doubly robust DiD estimator based on stabilized inverse probability weighting and ordinary least squares{p_end}
 {synopt:{bf:reg}}Outcome regression DiD estimator based on ordinary least squares{p_end}
 {synopt:{bf:stdipw}}Abadie (2005) inverse probability weighting DiD estimator with stabilized weights{p_end}
-{synopt:{bf:aipw}}Abadie (2005) inverse probability weighting DiD estimator{p_end}
+{synopt:{bf:ipw}}Abadie (2005) inverse probability weighting DiD estimator{p_end}
 {synopt:{bf:ipwra}}Inverse-probability-weighted regression adjustment (via teffects){p_end}
 {synopt:{bf:all}}Compute all of the above{p_end}
 {synoptline}
