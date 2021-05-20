@@ -1763,15 +1763,43 @@ real matrix mboot_did(pointer scalar y, real scalar reps, bwtype) {
 	real scalar i,n, k1, k2
 	n=rows(yy)
 	k1=((1+sqrt(5))/(2*sqrt(5)))
-	k2=0.5*(1+sqrt(5)) 
-	for(i=1;i<=reps;i++){
-		// WBootstrap:Mammen 
-		if (bwtype==1) {			
+	k2=0.5*(1+sqrt(5))
+	
+	if (bwtype==1) {			
+	    for(i=1;i<=reps;i++){
 			bsmean[i,]=mean(yy:*(k2:-sqrt(5)*(runiform(n,1):<k1)) )	
 		}
-		else if (bwtype==2) {
+	}
+	else if (bwtype==2) {
+	    for(i=1;i<=reps;i++){
 		// -1 or 1:Rademacher distribution:
 			bsmean[i,]=mean(yy:*(1:-2*runiformint(n,1,0,1) ) )	
+		}	
+	}
+	
+	return(bsmean)
+}
+
+real matrix wboot_did(pointer scalar y, id, real scalar reps, bwtype) {
+	real matrix yy, bsmean
+	yy=(*y):-mean((*y))
+ 	bsmean=J(reps,cols(yy),0)
+	real scalar i,n, k1, k2
+	n=rows(*id)
+	k1=((1+sqrt(5))/(2*sqrt(5)))
+	k2=0.5*(1+sqrt(5)) 
+	// WBootstrap:Mammen 
+	if (bwtype==1) {			
+	    for(i=1;i<=reps;i++){
+		    v =(k2:-sqrt(5)*(runiform(n,1):<k1))
+			bsmean[i,]=mean(yy:*v[(*id)])	
+		}
+	}
+	else if (bwtype==2) {
+	    for(i=1;i<=reps;i++){
+		// -1 or 1:Rademacher distribution:
+			v=(1:-2*runiformint(n,1,0,1) )
+			bsmean[i,]=mean(yy:*v[(*id)])	
 		}	
 	}
 	return(bsmean)
@@ -1806,7 +1834,20 @@ void mboot(string scalar rif, touse, vv, real scalar reps, bwtype ) {
 	st_matrix(vv,iqrse(fr)^2)
 }
 
-/// qtp(abs(xx/ iqrse(xx)),.95) 
+real rowvector makeid(real rowvector nid) {
+    real rowvector id
+    id=J(rows(nid),1,1)
+	for(i=2;i<=2956;i++){
+		if (nid[i]==nid[i-1]) id[i]=id[i-1]
+		else (
+			id[i]=id[i-1]+1
+		)
+	}
+	return(id)
+}
+
+
+
 end
 
 ** estimators left
