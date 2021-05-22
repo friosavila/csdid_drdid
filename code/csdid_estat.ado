@@ -1,6 +1,5 @@
 ** Estat command for aggregators
-program drop csdid_estat
-program csdid_estat, sortpreserve rclass
+ program csdid_estat, sortpreserve rclass
 version 14
         if "`e(cmd)'" != "csdid" {
                 error 301
