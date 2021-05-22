@@ -1,13 +1,9 @@
 # DRDID: Doubly Robust Difference-in-Differences Estimators for Stata
-## Version 0.1 (2021-05-17)
+## Version 0.1 (2021-05-22)
 This version is a beta release. If you find an error, please [submit an issue](https://github.com/friosavila/csdid_drdid/issues/new/choose). 
 # Installation
 ```
 net install csdid, from ("https://raw.githubusercontent.com/friosavila/csdid_drdid/main/code/") replace
-```
-
-```
-help csdid
 ```
 
 
