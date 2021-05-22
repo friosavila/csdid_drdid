@@ -1,5 +1,6 @@
 ** Estat command for aggregators
- program csdid_estat, sortpreserve rclass
+*program drop csdid_estat
+program csdid_estat, sortpreserve  
 version 14
         if "`e(cmd)'" != "csdid" {
                 error 301
@@ -34,9 +35,12 @@ program csdid_pretrend, sortpreserve rclass
 	}
 	display "Pretrend Test. H0 All Pre-treatment are equal to 0"
 	test `pretrend'
+	return scalar chi2_pretest	= scalar(r(chi2))
+	return scalar df_pretest    = scalar(r(df))
+	return scalar p_pretest		= scalar(r(p))
 end
 
-program csdid_simple, sortpreserve rclass
+program csdid_simple,  rclass sortpreserve
 
 	local simple `simple' (simple: ( ( 
 	foreach j in `e(tlev)' {
@@ -51,7 +55,11 @@ program csdid_simple, sortpreserve rclass
 	local simple `simple' 0)/(`wcl'0)))
 	display "Simple Average Treatment"
 	nlcom  `simple', noheader
-
+ 	tempvar b V
+	matrix `b' = r(b)
+	matrix `V' = r(V)
+	return matrix b_simple = `b'
+	return matrix V_simple = `V'
 end
 
 program csdid_group, sortpreserve rclass
@@ -69,6 +77,11 @@ program csdid_group, sortpreserve rclass
 	}
 	display "Group Effects"
 	nlcom `group', noheader
+ 	tempvar b V
+	matrix `b' = r(b)
+	matrix `V' = r(V)
+	return matrix b_group = `b'
+	return matrix V_group = `V'
 end
 
 program csdid_calendar, sortpreserve rclass
@@ -88,6 +101,11 @@ program csdid_calendar, sortpreserve rclass
 	}
 	display "Time Estimated Effects"
 	nlcom `calendar', noheader
+ 	tempvar b V
+	matrix `b' = r(b)
+	matrix `V' = r(V)
+	return matrix b_calendar = `b'
+	return matrix V_calendar = `V'	
 end
  
 program csdid_event, sortpreserve rclass
@@ -126,6 +144,11 @@ program csdid_event, sortpreserve rclass
 		}
 	display "Event Studies:Dynamic effects"
 	nlcom `evnt0', noheader
+ 	tempvar b V
+	matrix `b' = r(b)
+	matrix `V' = r(V)
+	return matrix b_event = `b'
+	return matrix V_event = `V'	
 end 
  
 program stuff
