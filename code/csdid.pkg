@@ -28,6 +28,7 @@ d
 
 f csdid.ado
 f drdid.ado
+f csdid_estat.ado
 
 f example.do
 f test.do
