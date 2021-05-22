@@ -6,6 +6,12 @@ This version is a beta release. If you find an error, please [submit an issue](h
 net install csdid, from ("https://raw.githubusercontent.com/friosavila/csdid_drdid/main/code/") replace
 ```
 
+```
+help csdid
+```
+
+
+
 # Authors
 - Fernando Rios-Avila (Levy Economics Institute of Bard College), *maintainer*
 - Asjad Naqvi (International Institute for Applied Systems Analysis)
