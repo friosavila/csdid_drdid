@@ -3,7 +3,7 @@
 This version is a beta release. If you find an error, please [submit an issue](https://github.com/friosavila/csdid_drdid/issues/new/choose). 
 # Installation
 ```
-net install drdid, from ("https://raw.githubusercontent.com/friosavila/csdid_drdid/v0.1/code")
+net install csdid, from ("https://raw.githubusercontent.com/friosavila/csdid_drdid/main/code/") replace
 ```
 
 # Authors
