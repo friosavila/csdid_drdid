@@ -6,7 +6,7 @@ This version is a beta release. If you find an error, please [submit an issue](h
 net install csdid, from ("https://raw.githubusercontent.com/friosavila/csdid_drdid/main/code/") replace
 ```
 
-For a walkthrough of the command please visit the website: https://github.com/friosavila/csdid_drdid/tree/v0.1
+For a walkthrough of the command please visit the website: https://friosavila.github.io/playingwithstata/main_csdid.html
 
 
 # Authors
