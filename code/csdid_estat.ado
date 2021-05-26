@@ -1,5 +1,5 @@
+*! v1 FRA Adds Safeguards to csdid calendar. Calendar starts after treatment
 ** Estat command for aggregators
-*program drop csdid_estat
 program csdid_estat, sortpreserve  
 version 14
         if "`e(cmd)'" != "csdid" {
@@ -8,7 +8,7 @@ version 14
 		gettoken key rest : 0, parse(", ")
 		 
 		if inlist("`key'","simple","pretrend","group","calendar","event","all") {
-			csdid_`key'
+			csdid_`key'  `rest'
 		}
 		else {
 		    display in red "Option `key' not recognized"
@@ -41,7 +41,7 @@ program csdid_pretrend, sortpreserve rclass
 end
 
 program csdid_simple,  rclass sortpreserve
-
+	syntax , [post estore(name)]
 	local simple `simple' (simple: ( ( 
 	foreach j in `e(tlev)' {
 		foreach i in `e(glev)' {		
@@ -54,15 +54,38 @@ program csdid_simple,  rclass sortpreserve
 	}
 	local simple `simple' 0)/(`wcl'0)))
 	display "Simple Average Treatment"
-	nlcom  `simple', noheader
- 	tempvar b V
-	matrix `b' = r(b)
-	matrix `V' = r(V)
-	return matrix b_simple = `b'
-	return matrix V_simple = `V'
+	
+	if "`post'`estore'"=="" {
+		nlcom  `simple', noheader
+		tempvar b V
+		matrix `b' = r(b)
+		matrix `V' = r(V)
+		return matrix b_simple = `b'
+		return matrix V_simple = `V'
+	}
+	else if "`post'"!="" & "`estore'"==""  {
+	    nlcom `simple', noheader post
+	}
+	else if "`estore'"!="" & "`post'"==""  {
+	   	tempname lastreg
+		tempvar b V table
+		capture:est store `lastreg'
+		nlcom `simple', noheader post
+		est store `estore'
+		display "Output store in `estore'"
+		matrix `b' = e(b)
+		matrix `V' = e(V)
+		matrix `table' = r(table)
+		qui:est restore `lastreg'
+		return matrix b_simple 	= `b'
+		return matrix V_simple 	= `V'
+		return matrix table 	= `table'
+	}
 end
 
 program csdid_group, sortpreserve rclass
+	syntax , [post estore(name)]
+
 	foreach i in `e(glev)'  {		
 		local group `group' (g`i': ( ( 
 		local cnt=0
@@ -76,39 +99,88 @@ program csdid_group, sortpreserve rclass
 		local group `group' 0)/`cnt'))
 	}
 	display "Group Effects"
-	nlcom `group', noheader
- 	tempvar b V
-	matrix `b' = r(b)
-	matrix `V' = r(V)
-	return matrix b_group = `b'
-	return matrix V_group = `V'
+	if "`post'`estore'"=="" {
+		nlcom `group', noheader
+		tempvar b V
+		matrix `b' = r(b)
+		matrix `V' = r(V)
+		return matrix b_group = `b'
+		return matrix V_group = `V'
+	}
+	else if "`post'"!="" & "`estore'"==""  {
+	    nlcom `group', noheader post
+	}
+	else if "`estore'"!="" & "`post'"==""  {
+	   	tempname lastreg
+		tempvar b V table
+		capture:est store `lastreg'
+		nlcom `group', noheader post
+		est store `estore'
+		display "Output store in `estore'"
+		matrix `b' = e(b)
+		matrix `V' = e(V)
+		matrix `table' = r(table)
+		qui:est restore `lastreg'
+		return matrix b_group 	= `b'
+		return matrix V_group 	= `V'
+		return matrix table 	= `table'
+	}	
 end
 
 program csdid_calendar, sortpreserve rclass
+	syntax , [post estore(name)]
+
+	** Verify Tlevel > glevel
+	local mint:word 1 of `e(glev)'	
 	foreach j in `e(tlev)' {
-		local calendar `calendar' (t`j': ( ( 
-		macro drop _wcl
-		foreach i in `e(glev)' {		
-			local cnt=0    
-			local time1 = min(`i'-1, `j'-1)
-			if (`i'<=`j') {
-				local calendar `calendar' [g`i']t_`time1'_`j'*[wgt]w`i'+
-				local wcl      `wcl' 	  [wgt]w`i'+
-	 
+		if `j' >= `mint' {
+		    local cnt=0    
+			local mcalendar   (t`j': ( ( 
+			macro drop _wcl
+			foreach i in `e(glev)' {		
+				local time1 = min(`i'-1, `j'-1)
+				if (`i'<=`j') {
+				    local cnt=`cnt'+1    
+					local mcalendar `mcalendar' [g`i']t_`time1'_`j'*[wgt]w`i'+
+					local wcl      `wcl' 	  [wgt]w`i'+ 
+				}
 			}
+			local mcalendar `mcalendar' 0)/(`wcl'0)))
+			if `cnt'>0 local calendar `calendar' `mcalendar'
 		}
-		local calendar `calendar' 0)/(`wcl'0)))
 	}
 	display "Time Estimated Effects"
-	nlcom `calendar', noheader
- 	tempvar b V
-	matrix `b' = r(b)
-	matrix `V' = r(V)
-	return matrix b_calendar = `b'
-	return matrix V_calendar = `V'	
+	if "`post'`estore'"=="" {
+		nlcom `calendar', noheader
+		tempvar b V
+		matrix `b' = r(b)
+		matrix `V' = r(V)
+		return matrix b_calendar = `b'
+		return matrix V_calendar = `V'	
+	}
+	else if "`post'"!="" & "`estore'"=="" {
+	    nlcom `calendar', noheader post
+	}
+	else if "`estore'"!="" & "`post'"==""  {
+	   	tempname lastreg
+		tempvar b V table
+		capture:est store `lastreg'
+		nlcom `calendar', noheader post
+		est store `estore'
+		display "Output store in `estore'"
+		matrix `b' = e(b)
+		matrix `V' = e(V)
+		matrix `table' = r(table)
+		qui:est restore `lastreg'
+		return matrix b_calendar 	= `b'
+		return matrix V_calendar 	= `V'
+		return matrix table 	= `table'
+	}
 end
  
 program csdid_event, sortpreserve rclass
+	syntax , [post estore(name)]
+
 	** Define groups
 	** G
 	local tt : word count   `e(glev)'
@@ -143,12 +215,32 @@ program csdid_event, sortpreserve rclass
 			local evnt0 `evnt0' 0)/(`wcl'0)))
 		}
 	display "Event Studies:Dynamic effects"
-	nlcom `evnt0', noheader
- 	tempvar b V
-	matrix `b' = r(b)
-	matrix `V' = r(V)
-	return matrix b_event = `b'
-	return matrix V_event = `V'	
+	if "`post'`estore'"=="" {
+		nlcom `evnt0', noheader
+		tempvar b V
+		matrix `b' = r(b)
+		matrix `V' = r(V)
+		return matrix b_event = `b'
+		return matrix V_event = `V'	
+	}
+	else if "`post'"!="" & "`estore'"=="" {
+	    nlcom `evnt0', noheader post
+	}
+	else if "`estore'"!="" & "`post'"==""  {
+	   	tempname lastreg
+		tempvar b V table
+		capture:est store `lastreg'
+		nlcom `evnt0', noheader post
+		est store `estore'
+		display "Output store in `estore'"
+		matrix `b' = e(b)
+		matrix `V' = e(V)
+		matrix `table' = r(table)
+		qui:est restore `lastreg'
+		return matrix b_event 	= `b'
+		return matrix V_event 	= `V'
+		return matrix table 	= `table'
+	}
 end 
  
 program stuff
