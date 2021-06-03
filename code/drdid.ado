@@ -1,6 +1,7 @@
-*! version 1.36 17may2021 Changes with EP display options
+*! version 1.37 2jun2021 Add extra messages of 2x2 balance. Checks that you indeed have panel data
+* version 1.36 17may2021 Changes with EP display options
 ** Goal. Make the estimator modular. That way other options can be added
-*! v1.35 DRDID for Stata 
+* v1.35 DRDID for Stata 
 * Added by AN and adapted by FRA
 * Added Version control (v14), Variables are no longer left after DRDID. But option stub is added 
 * for later, as CSDID will use those
@@ -80,12 +81,33 @@ program define drdid_wh, eclass sortpreserve byable(recall)
 	}
 	
 	marksample touse
-	markout `touse' `ivar' `time' `treatment'
-	**# Verifies if ALL variables exist. 
-/*	if "`stub'"=="" {
-		loc stub "__"
-		
-	}*/
+	markout `touse' `ivar' `time' `treatment' 
+	**# Verifies if data is panel data when "ivar" is declared
+	if "`ivar'"!="" {
+		tempvar balp
+		bysort `touse' `ivar' `time':gen `balp'=_N if `touse'
+		sum `balp', meanonly
+		if r(max)>1 {
+			display in red "{p}Repeated time values within panel `ivar'{p_end}" _n ///
+						   "{p}You may want to use `ivar' as a cluster variable and use" ///
+						   "Repeated crosssection estimators {p_end}"
+			error 451
+		}
+		**# verify ALL data is locally balanced
+		drop `balp'
+		by `touse' `ivar':gen `balp'=_N if `touse'
+		sum `balp', meanonly
+		if r(mean)<2 {
+			display in red "{p}Some panel units are observed only once.{p_end}" _n ///
+						   "{p}Those observations will be excluded from the sample. " ///
+						   "If you want to keep them, use `ivar' as cluster variable" ///
+						   "but NOT as the panel id -ivar- {p_end}"
+			replace `touse' = 0 if `balp'==1
+		}
+	}
+	
+	
+	
 	
 	cap unab allnew: `stub'att* 
 	if "`stub'"!="" & "`replace'"=="" & "`allnew'"!="" {
@@ -122,6 +144,7 @@ program define drdid_wh, eclass sortpreserve byable(recall)
 	su `vals' if `touse', meanonly 
 	if  r(sum)!=2 {
 	    display in red "Time variable can only have 2 values in the working sample"
+		display in red "Yours have `r(sum)'"
 		error 1
 	}
 	else {
@@ -148,6 +171,7 @@ program define drdid_wh, eclass sortpreserve byable(recall)
  
 	if  r(sum)!=2 {
 	    display in red "Treatment variable can only have 2 values in the working sample"
+		display in red "Yours have `r(sum)'."
 		display "The lower value identifies the control group, whereas the higher one identifies the treated group."
 		error 1
 	}
@@ -156,6 +180,8 @@ program define drdid_wh, eclass sortpreserve byable(recall)
 		qui:egen byte `trt'=group(`treatment') if `touse'
 		qui:replace `trt'=`trt'-1
 	}
+	
+
 	
 	**# Verify treatment and prepost
 	
