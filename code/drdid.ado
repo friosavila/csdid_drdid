@@ -454,13 +454,13 @@ program define drdid_aipw, eclass
 			** _delta
 			bysort `touse' `ivar' (`tmt'):gen double `__dy__'=`y'[2]-`y'[1] if `touse' 
 			gen byte `touse2'=`touse'*(`tmt'==0)
-		    tempname b V
+		    tempname b V ncl
 			mata:ipw_abadie_panel("`__dy__'","`xvar' ","`xb'","`psb' ","`psV' ","`psxb'","`trt'","`tmt'","`touse2'","`att'","`b'","`V'","`weight'")
 			
 			*replace `stub'att=. if `tmt'==1
 			
 			if "`cluster'"!="" & "`boot'"=="" {
-				mata:clusterse("`att'","`cluster'","`touse'", "`V'")
+				mata:clusterse("`att'","`cluster'","`touse'", "`V'","`ncl'")
 				
 			}
 			else if "`boot'"!="" {
@@ -492,12 +492,12 @@ program define drdid_aipw, eclass
 			tempname psb psV
 			matrix `psb'=e(b)
 			matrix `psV'=e(V)
-		    tempname b V
+		    tempname b V ncl
  
 			mata:ipw_abadie_rc("`y'","`xvar' ","`tmt'","`trt'","`psV'","`psxb'","`weight'","`touse'","`att'","`b'","`V'")
 			** Wbootstrap Multipler
 			if "`cluster'"!="" & "`boot'"=="" {
-				mata:clusterse("`att'","`cluster'","`touse'", "`V'")
+				mata:clusterse("`att'","`cluster'","`touse'", "`V'","`ncl'")
 				
 			}
 			else if "`boot'"!="" {
@@ -523,11 +523,18 @@ program define drdid_aipw, eclass
 		ereturn matrix ipwV `psV'
 		
 	}
+	
+	
 ** if STUB is used, then RIF is saved		
 	if "`stub'"!="" {
 		qui:capture drop `stub'att
 		qui:gen double `stub'att=`att'
 	}	
+	
+	if "`cluster'"!="" {
+		    ereturn scalar N_clust =`=scalar(`ncl')'
+			ereturn local clustvar `cluster'
+		}
 	ereturn local cmd drdid
 	ereturn local method  aipw
 	ereturn hidden local method2 aipw
@@ -581,7 +588,7 @@ program define drdid_dripw, eclass
 			mata:drdid_panel("`__dy__'","`xvar' ","`xb'","`psb'","`psV'","`psxb'","`trt'","`tmt'","`touse2'","`att'","`b'","`V'","`weight'")
 			**replace `stub'att=. if `tmt'==1
 			if "`cluster'"!="" & "`boot'"=="" {
-				mata:clusterse("`att'","`cluster'","`touse'", "`V'")
+				mata:clusterse("`att'","`cluster'","`touse'", "`V'","`ncl'")
 				
 			}
 			else if "`boot'"!="" {
@@ -615,7 +622,7 @@ program define drdid_dripw, eclass
 			tempname psb psV
 			matrix `psb'=e(b)
 			matrix `psV'=e(V)
-		    tempname b V
+		    tempname b V ncl
 			*capture drop `stub'att
 			*gen double `stub'att=.
 			**ols 
@@ -647,7 +654,7 @@ program define drdid_dripw, eclass
 			}
 			////
 			if "`cluster'"!="" & "`boot'"=="" {
-				mata:clusterse("`att'","`cluster'","`touse'", "`V'")
+				mata:clusterse("`att'","`cluster'","`touse'", "`V'","`ncl'")
 				
 			}
 			else if "`boot'"!="" {
@@ -687,6 +694,10 @@ program define drdid_dripw, eclass
 		qui:capture drop `stub'att
 		qui:gen double `stub'att=`att'
 	}	
+	if "`cluster'"!="" {
+		    ereturn scalar N_clust =`=scalar(`ncl')'
+			ereturn local clustvar `cluster'
+		}
 	ereturn local cmd drdid
 	ereturn local method  dripw
 	ereturn hidden local method2 dripw
@@ -735,7 +746,7 @@ program define drdid_reg, eclass
 				"`tmt'" , "`touse2'","`att'","`b'","`V'","`weight'") 
 			*replace `stub'att=. if `tmt'==1
 			if "`cluster'"!="" & "`boot'"=="" {
-				mata:clusterse("`att'","`cluster'","`touse'", "`V'")
+				mata:clusterse("`att'","`cluster'","`touse'", "`V'","`ncl'")
 				
 			}
 			else if "`boot'"!="" {
@@ -769,14 +780,14 @@ program define drdid_reg, eclass
 			predict double `y01'
 			matrix `regb01' = e(b)
 			matrix `regV01' = e(V)
-			tempname b V
+			tempname b V ncl
 			*capture drop `stub'att
 			*gen double `stub'att=.
 			mata:reg_rc("`y'","`y00' `y01'","`xvar' ",	///
 				"`tmt'","`trt'","`weight'","`touse'","`att'","`b'","`V'")
 				
 			if "`cluster'"!="" & "`boot'"=="" {
-				mata:clusterse("`att'","`cluster'","`touse'", "`V'")
+				mata:clusterse("`att'","`cluster'","`touse'", "`V'","`ncl'")
 				
 			}
 			else if "`boot'"!="" {
@@ -807,6 +818,10 @@ program define drdid_reg, eclass
 		qui:capture drop `stub'att
 		qui:gen double `stub'att=`att'
 	}
+	if "`cluster'"!="" {
+		    ereturn scalar N_clust =`=scalar(`ncl')'
+			ereturn local clustvar `cluster'
+		}
 	ereturn local cmd drdid
 	ereturn local method  reg
 	ereturn hidden local method2 reg
@@ -867,7 +882,7 @@ program define drdid_stdipw, eclass
 				"`att'","`b'","`V'","`weight'")
 			*replace `stub'att=. if `tmt'==1
 			if "`cluster'"!="" & "`boot'"=="" {
-				mata:clusterse("`att'","`cluster'","`touse'", "`V'")
+				mata:clusterse("`att'","`cluster'","`touse'", "`V'","`ncl'")
 				
 			}
 			else if "`boot'"!="" {
@@ -889,8 +904,7 @@ program define drdid_stdipw, eclass
 		ereturn scalar attvar1 =`attvar1'
 		ereturn matrix ipwb `psb'
 		ereturn matrix ipwV `psV'
-	}
-	
+	}	
 	else if "`ivar'"=="" {
 	    qui {
 		    `isily' logit `trt' `xvar' if `touse' [iw = `weight']
@@ -899,12 +913,12 @@ program define drdid_stdipw, eclass
 			tempname psb psV
 			matrix `psb'=e(b)
 			matrix `psV'=e(V)
-			tempname b V
+			tempname b V ncl
 			*capture drop `stub'att
 			*gen `stub'att=.
 			mata:std_ipw_rc("`y'","`xvar' ","`tmt'","`trt'","`psV'","`psxb'","`weight'","`touse'","`att'","`b'","`V'")
 			if "`cluster'"!="" & "`boot'"=="" {
-				mata:clusterse("`att'","`cluster'","`touse'", "`V'")
+				mata:clusterse("`att'","`cluster'","`touse'", "`V'","`ncl'")
 				
 			}
 			else if "`boot'"!="" {
@@ -922,19 +936,27 @@ program define drdid_stdipw, eclass
 		local N = r(N)
 		tempvar touse2
 		clonevar `touse2'=`touse'
-		ereturn post `b' `V', buildfvinfo esample(`touse2') obs(`N')
+		ereturn post `b' `V', buildfvinfo esample(`touse2') obs(`N') 
 		local att1    =`=_b[r1vs0.`treatvar']'
 		local attvar1 =`=_se[r1vs0.`treatvar']'^2
 		ereturn scalar att1    =`att1'
 		ereturn scalar attvar1 =`attvar1'
 		ereturn matrix ipwb `psb'
 		ereturn matrix ipwV `psV'
+		if "`cluster'"!="" {
+		    ereturn scalar N_clust =`=scalar(`ncl')'
+			ereturn local clustvar `cluster'
+		}
 	}
 	
 	if "`stub'"!="" {
 		qui:capture drop `stub'att
 		qui:gen double `stub'att=`att'
 	}
+	if "`cluster'"!="" {
+		    ereturn scalar N_clust =`=scalar(`ncl')'
+			ereturn local clustvar `cluster'
+		}
 	ereturn local cmd drdid
 	ereturn local method stdipw 
 	ereturn hidden local method2 stdipw 
@@ -983,7 +1005,7 @@ program define drdid_sipwra, eclass
 		gen double `sy'= `__dy__'/`scl'		
 		qui:teffects ipwra (`sy' `xvar') (`trt' `xvar', logit)	///
 			if `touse' & `tmt'==0 [iw = `weight'] , atet `clopt'
-		tempname b V aux
+		tempname b V ncl aux
 		matrix `aux'=e(b)*`scl'
 		matrix `b'=`aux'[1,1]
 		matrix `aux'=e(V)*`scl'^2
@@ -1071,7 +1093,7 @@ program define drdid_imp, eclass sortpreserve
 ********************************************************************************				
 ********************************************************************************
 			if "`cluster'"!="" & "`boot'"=="" {
-				mata:clusterse("`att'","`cluster'","`touse'", "`V'")
+				mata:clusterse("`att'","`cluster'","`touse'", "`V'","`ncl'")
 				
 			}
 			else if "`boot'"!="" {
@@ -1129,7 +1151,7 @@ program define drdid_imp, eclass sortpreserve
 			predict double `y11'
 			matrix `regb11' =e(b)
 			matrix `regV11' =e(V)
-			tempname b V
+			tempname b V ncl
 			
 			if "`rc1'"=="" {
 				mata:drdid_imp_rc("`y'","`y00' `y01' `y10' `y11'",	///
@@ -1144,7 +1166,7 @@ program define drdid_imp, eclass sortpreserve
 			}
 			
 			if "`cluster'"!="" & "`boot'"=="" {
-				mata:clusterse("`att'","`cluster'","`touse'", "`V'")
+				mata:clusterse("`att'","`cluster'","`touse'", "`V'","`ncl'")
 				
 			}
 			else if "`boot'"!="" {
@@ -1183,6 +1205,10 @@ program define drdid_imp, eclass sortpreserve
 		qui:capture drop `stub'att
 		qui:gen double `stub'att=`att'
 	}
+	if "`cluster'"!="" {
+		    ereturn scalar N_clust =`=scalar(`ncl')'
+			ereturn local clustvar `cluster'
+		}
 	Display, bmatrix(e(b)) vmatrix(e(V)) `diopts' 
 end
 
@@ -2147,7 +2173,7 @@ void drdid_imp_rc1(string scalar y_, yy_, xvar_ , tmt_, trt_, psv_, pxb_, wgt_ ,
 
 // Clustered Standard errors
 
-real matrix clusterse(string scalar rif, clvar, touse, V){
+real matrix clusterse(string scalar rif, clvar, touse, V,ncl){
     /// estimates Clustered Standard errors
     real matrix ord, xcros, ifp, info, vv, iiff , cl
 	//1st get the IFS and CL variable. 
@@ -2170,6 +2196,7 @@ real matrix clusterse(string scalar rif, clvar, touse, V){
 	
 	//*nc/(nc-1)
 	st_matrix(V,    vv)
+	st_numscalar(ncl, nc)
 	//        ^     ^
 	//        |     |
 	//      stata   mata
