@@ -1,3 +1,4 @@
+*! Ver 1.38  Adding Cluster Stantandard errors
 *! version 1.37 2jun2021 Add extra messages of 2x2 balance. Checks that you indeed have panel data
 * version 1.36 17may2021 Changes with EP display options
 ** Goal. Make the estimator modular. That way other options can be added
@@ -71,6 +72,7 @@ program define drdid_wh, eclass sortpreserve byable(recall)
 							reps(int 999) 				///
 							bwtype(int 1)  				/// Hidden option
 							stub(name) replace 			/// to avoid overwritting
+							cluster(varname)			/// For Cluster
 							*							///
 							]  
 	
@@ -81,11 +83,11 @@ program define drdid_wh, eclass sortpreserve byable(recall)
 	}
 	
 	marksample touse
-	markout `touse' `ivar' `time' `treatment' 
+	markout `touse' `ivar' `time' `treatment'  `cluster'
 	**# Verifies if data is panel data when "ivar" is declared
 	if "`ivar'"!="" {
 		tempvar balp
-		bysort `touse' `ivar' `time':gen `balp'=_N if `touse'
+		qui:bysort `touse' `ivar' `time':gen `balp'=_N if `touse'
 		sum `balp', meanonly
 		if r(max)>1 {
 			display in red "{p}Repeated time values within panel `ivar'{p_end}" _n ///
@@ -95,7 +97,7 @@ program define drdid_wh, eclass sortpreserve byable(recall)
 		}
 		**# verify ALL data is locally balanced
 		drop `balp'
-		by `touse' `ivar':gen `balp'=_N if `touse'
+		qui:by `touse' `ivar':gen `balp'=_N if `touse'
 		sum `balp', meanonly
 		if r(mean)<2 {
 			display in red "{p}Some panel units are observed only once.{p_end}" _n ///
@@ -106,9 +108,7 @@ program define drdid_wh, eclass sortpreserve byable(recall)
 		}
 	}
 	
-	
-	
-	
+		
 	cap unab allnew: `stub'att* 
 	if "`stub'"!="" & "`replace'"=="" & "`allnew'"!="" {
 		foreach v of var `allnew' {
@@ -202,7 +202,7 @@ program define drdid_wh, eclass sortpreserve byable(recall)
 	local 01 touse(`touse') tmt(`tmt') trt(`trt') y(`y') 	///
 			 xvar(`xvar') `isily' ivar(`ivar') tag(`tag')	///
 			 weight(`wgt') stub(`stub') `boot' reps(`reps') ///
-			 bwtype(`bwtype') treatvar(`treatment') `rc1'
+			 bwtype(`bwtype') treatvar(`treatment') `rc1' cluster(`cluster')
 		
 	** Default will be IPT 
  	if "`estimator'"!="all" {
@@ -427,6 +427,7 @@ program define drdid_aipw, eclass
 			 boot 					///
 			 reps(int 999) 			///
 			 bwtype(int 1) 			///
+			 cluster(str)			///
 			 *						///
 			 ] 
 	** PS
@@ -458,7 +459,11 @@ program define drdid_aipw, eclass
 			
 			*replace `stub'att=. if `tmt'==1
 			
-			if "`boot'"!="" {
+			if "`cluster'"!="" & "`boot'"=="" {
+				mata:clusterse("`att'","`cluster'","`touse'", "`V'")
+				
+			}
+			else if "`boot'"!="" {
 			    mata:mboot("`att'", "`touse2'", "`V'", `reps', `bwtype')
 			}
 			
@@ -491,7 +496,11 @@ program define drdid_aipw, eclass
  
 			mata:ipw_abadie_rc("`y'","`xvar' ","`tmt'","`trt'","`psV'","`psxb'","`weight'","`touse'","`att'","`b'","`V'")
 			** Wbootstrap Multipler
-			if "`boot'"!="" {
+			if "`cluster'"!="" & "`boot'"=="" {
+				mata:clusterse("`att'","`cluster'","`touse'", "`V'")
+				
+			}
+			else if "`boot'"!="" {
 			    mata:mboot("`att'", "`touse'", "`V'", `reps', `bwtype')
 			}
 			matrix colname `b' = ATET:r1vs0.`treatvar'
@@ -544,6 +553,7 @@ program define drdid_dripw, eclass
 				boot 						///
 				reps(int 999)				///
 				bwtype(int 1) 				///
+				cluster(str)			///
 				*							///
 				]
 	** PS
@@ -570,7 +580,11 @@ program define drdid_dripw, eclass
 			gen byte `touse2'=`touse'*(`tmt'==0)
 			mata:drdid_panel("`__dy__'","`xvar' ","`xb'","`psb'","`psV'","`psxb'","`trt'","`tmt'","`touse2'","`att'","`b'","`V'","`weight'")
 			**replace `stub'att=. if `tmt'==1
-			if "`boot'"!="" {
+			if "`cluster'"!="" & "`boot'"=="" {
+				mata:clusterse("`att'","`cluster'","`touse'", "`V'")
+				
+			}
+			else if "`boot'"!="" {
 			    mata:mboot("`att'", "`touse2'", "`V'", `reps', `bwtype')
 			}
 			matrix colname `b'= ATET:r1vs0.`treatvar'
@@ -632,7 +646,11 @@ program define drdid_dripw, eclass
 				local nle "Not Locally efficient"
 			}
 			////
-			if "`boot'"!="" {
+			if "`cluster'"!="" & "`boot'"=="" {
+				mata:clusterse("`att'","`cluster'","`touse'", "`V'")
+				
+			}
+			else if "`boot'"!="" {
 			    mata:mboot("`att'", "`touse'", "`V'", `reps', `bwtype')
 			}			
 			matrix colname `b' = ATET:r1vs0.`treatvar'
@@ -692,6 +710,7 @@ program define drdid_reg, eclass
 			boot 					///
 			reps(int 999) 			///
 			bwtype(int 1) 			///
+			 cluster(str)			///
 			*						///
 			] 
 ** Simple application. But right now without RIF
@@ -715,7 +734,11 @@ program define drdid_reg, eclass
 			mata:reg_panel("`__dy__'", "`xvar' ", "`xb' " , "`trt'",	///
 				"`tmt'" , "`touse2'","`att'","`b'","`V'","`weight'") 
 			*replace `stub'att=. if `tmt'==1
-			if "`boot'"!="" {
+			if "`cluster'"!="" & "`boot'"=="" {
+				mata:clusterse("`att'","`cluster'","`touse'", "`V'")
+				
+			}
+			else if "`boot'"!="" {
 			    mata:mboot("`att'", "`touse2'", "`V'", `reps', `bwtype')
 			}			
 			matrix colname `b' = ATET:r1vs0.`treatvar'
@@ -751,7 +774,12 @@ program define drdid_reg, eclass
 			*gen double `stub'att=.
 			mata:reg_rc("`y'","`y00' `y01'","`xvar' ",	///
 				"`tmt'","`trt'","`weight'","`touse'","`att'","`b'","`V'")
-			if "`boot'"!="" {
+				
+			if "`cluster'"!="" & "`boot'"=="" {
+				mata:clusterse("`att'","`cluster'","`touse'", "`V'")
+				
+			}
+			else if "`boot'"!="" {
 			    mata:mboot("`att'", "`touse'", "`V'", `reps', `bwtype')
 			}			
 			matrix colname `b' = ATET:r1vs0.`treatvar'
@@ -803,6 +831,7 @@ program define drdid_stdipw, eclass
 			boot 					///
 			reps(int 999) 			///
 			bwtype(int 1) 			///
+			 cluster(str)			///
 			*						///
 			] 
 			
@@ -837,7 +866,11 @@ program define drdid_stdipw, eclass
 				"`psb'","`psV'","`psxb'","`trt'","`tmt'","`touse2'",	///
 				"`att'","`b'","`V'","`weight'")
 			*replace `stub'att=. if `tmt'==1
-			if "`boot'"!="" {
+			if "`cluster'"!="" & "`boot'"=="" {
+				mata:clusterse("`att'","`cluster'","`touse'", "`V'")
+				
+			}
+			else if "`boot'"!="" {
 			    mata:mboot("`att'", "`touse2'", "`V'", `reps', `bwtype')
 			}			
 			matrix colname `b'= ATET:r1vs0.`treatvar'
@@ -870,7 +903,11 @@ program define drdid_stdipw, eclass
 			*capture drop `stub'att
 			*gen `stub'att=.
 			mata:std_ipw_rc("`y'","`xvar' ","`tmt'","`trt'","`psV'","`psxb'","`weight'","`touse'","`att'","`b'","`V'")
-			if "`boot'"!="" {
+			if "`cluster'"!="" & "`boot'"=="" {
+				mata:clusterse("`att'","`cluster'","`touse'", "`V'")
+				
+			}
+			else if "`boot'"!="" {
 			    mata:mboot("`att'", "`touse'", "`V'", `reps', `bwtype')
 			}			
 			matrix colname `b' = ATET:r1vs0.`treatvar'
@@ -923,11 +960,15 @@ program define drdid_sipwra, eclass
 			boot 					///
 			reps(int 999) 			///
 			bwtype(int 1) 			///
+			cluster(str)			///
 			*						///
 			] 
 	tempvar att
 	qui:gen double `att'=.
 ** Simple application. But right now without RIF
+	if "`cluster'"!="" {
+		local clopt vce(cluster `cluster')
+	}
    if "`ivar'"=="" {
        display "Estimator not implemented for RC"
 	   exit
@@ -941,7 +982,7 @@ program define drdid_sipwra, eclass
 		local scl = r(mean)
 		gen double `sy'= `__dy__'/`scl'		
 		qui:teffects ipwra (`sy' `xvar') (`trt' `xvar', logit)	///
-			if `touse' & `tmt'==0 [iw = `weight'] , atet 
+			if `touse' & `tmt'==0 [iw = `weight'] , atet `clopt'
 		tempname b V aux
 		matrix `aux'=e(b)*`scl'
 		matrix `b'=`aux'[1,1]
@@ -984,6 +1025,7 @@ program define drdid_imp, eclass sortpreserve
             boot 				///
 			reps(int 999) 		///
 			bwtype(int 1) 		///
+			cluster(str)			///
 		*						///
 		] 
 
@@ -1026,10 +1068,16 @@ program define drdid_imp, eclass sortpreserve
 			mata:drdid_imp_panel("`__dy__'","`xvar' ","`xb'",	///
 				"`psb'","`psV'","`psxb'","`trt'","`tmt'","`touse2'",	///
 				"`att'","`b'","`V'","`weight'")	
-			
-			if "`boot'"!="" {
+********************************************************************************				
+********************************************************************************
+			if "`cluster'"!="" & "`boot'"=="" {
+				mata:clusterse("`att'","`cluster'","`touse'", "`V'")
+				
+			}
+			else if "`boot'"!="" {
 			    mata:mboot("`att'", "`touse2'", "`V'", `reps', `bwtype')
-			}			
+			}
+			
 			matrix colname `b'= ATET:r1vs0.`treatvar'
 			matrix colname `V'= ATET:r1vs0.`treatvar'
 			matrix rowname `V'= ATET:r1vs0.`treatvar'
@@ -1095,7 +1143,11 @@ program define drdid_imp, eclass sortpreserve
 				local nle "Not Locally efficient"
 			}
 			
-			if "`boot'"!="" {
+			if "`cluster'"!="" & "`boot'"=="" {
+				mata:clusterse("`att'","`cluster'","`touse'", "`V'")
+				
+			}
+			else if "`boot'"!="" {
 			    mata:mboot("`att'", "`touse'", "`V'", `reps', `bwtype')
 			}			
 			matrix colname `b'=ATET:r1vs0.`treatvar'
@@ -1488,6 +1540,7 @@ mata
  //  -15.80330618	
  //  9.087929526
  }
+ 
 // Regression approach
   void reg_rc(string scalar y_, yy_, xvar_ , tmt_, trt_, wgt_ ,  touse, rif,b,V) {
     // main Loading variables
@@ -2027,8 +2080,9 @@ void drdid_imp_rc(string scalar y_, yy_, xvar_ , tmt_, trt_, psv_, pxb_, wgt_ , 
 //-.2088586355	
 //.2003375215	
 }
+
 /// drdid_imp_rc1
-void drdid_imp_rc1(string scalar y_, yy_, xvar_ , tmt_, trt_, psv_, pxb_, wgt_ ,  touse, rif,b,V){
+void drdid_imp_rc1(string scalar y_, yy_, xvar_ , tmt_, trt_, psv_, pxb_, wgt_ ,  touse, rif,b,V) {
     // main Loading variables
     real matrix y,  y00, y01, y10, y11,
 				xvar, tmt, trt, psv, psc, wgt
@@ -2090,6 +2144,37 @@ void drdid_imp_rc1(string scalar y_, yy_, xvar_ , tmt_, trt_, psv_, pxb_, wgt_ ,
 //  -3.683728719	
 //	 3.114495585
 }
+
+// Clustered Standard errors
+
+real matrix clusterse(string scalar rif, clvar, touse, V){
+    /// estimates Clustered Standard errors
+    real matrix ord, xcros, ifp, info, vv, iiff , cl
+	//1st get the IFS and CL variable. 
+	iiff = st_data(.,rif,touse)
+	cl   = st_data(.,clvar,touse)
+	// order and sort them, Make sure E(IF) is zero.
+	ord  = order(cl,1)
+	iiff = iiff:-mean(iiff)
+	iiff = iiff[ord,]
+	cl   = cl[ord,]
+	// check how I cleaned data!
+	info  = panelsetup(cl,1)
+	// faster Cluster? Need to do this for mmqreg
+	ifp   = panelsum(iiff,info)
+	xcros = quadcross(ifp,ifp)
+	real scalar nt, nc
+	nt=rows(iiff)
+	nc=rows(info)
+	vv=	xcros/(nt^2)
+	
+	//*nc/(nc-1)
+	st_matrix(V,    vv)
+	//        ^     ^
+	//        |     |
+	//      stata   mata
+}
+
 //** Simple Bootstrap.
  
 real matrix mboot_did(pointer scalar y, real scalar reps, bwtype) {
