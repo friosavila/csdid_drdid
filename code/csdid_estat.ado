@@ -1,3 +1,4 @@
+*! v1.5 FRA Change from nlcom to mata
 *! v1.2 FRA Adds the options for simple and calendar so it doesnt depend on consecutive years
 * also adds the option window
 *! v1 FRA Adds Safeguards to csdid calendar. Calendar starts after treatment
@@ -8,9 +9,11 @@ version 14
                 error 301
         }
 		gettoken key rest : 0, parse(", ")
-		 
-		if inlist("`key'","simple","pretrend","group","calendar","event","all") | ///
-		   inlist("`key'","group_alt","calendar_alt","event_alt"){
+		if "`e(vcetype)'"=="WBoot" {
+		    display "Test will be based on asymptotic VCoV"
+			display "{p}If you want aggregations based on WB, use option saverif() ad csdid_stats{p_end}"
+		}
+		if inlist("`key'","attgt","simple","pretrend","group","calendar","event","all") {
 			csdid_`key'  `rest'
 		}
 		else {
@@ -29,357 +32,418 @@ program csdid_all, sortpreserve rclass
 end
 
 program csdid_pretrend, sortpreserve rclass
-	local pretrend
-	foreach i in `e(glev)' {		
-   		local time1 = `e(time0)'
-		foreach j in `e(tlev)' {
-			*local time1 = min(`i'-1, `j'-1)
-			if `j'<`i' local pretrend `pretrend' ([g`i']t_`time1'_`j'=0)
-			if `j'<`i' local time1 = `j'							
-		}
-	}
+	clrreturn
 	display "Pretrend Test. H0 All Pre-treatment are equal to 0"
-	test `pretrend'
-	return scalar chi2_pretest	= scalar(r(chi2))
-	return scalar df_pretest    = scalar(r(df))
-	return scalar p_pretest		= scalar(r(p))
+	mata:csdid_pretrend()
+	display "chi2(`r(df)') = `r(chi2)'"
+	display "p-value       = `r(pchi2)'"
+end
+
+program clrreturn, rclass
+        exit
+end
+
+program csdid_attgt,  rclass sortpreserve
+	syntax, [estore(name) esave(name) replace]
+ 	display "ATT GT with WBOOT SE (alternative method)"
+	tempname lastreg
+	tempvar b V table
+	matrix `b' = e(b_attgt)
+	matrix `V' = e(V_attgt)
+	matrix r_b_ = e(b_attgt)
+	matrix r_V_ = e(V_attgt)
+	
+	capture:est store `lastreg'	
+	ereturn clear
+	adde post `b' `V'
+	adde local cmd 	   estat
+	adde local cmdline estat attgt
+	if "`estore'"!="" est store `estore'
+	if "`esave'" !="" est save  `esave', `replace'
+	_coef_table
+	matrix rtb=r(table)
+	qui:est restore `lastreg'
+	return matrix table = rtb
+	return matrix b = r_b_
+	return matrix V = r_V_
 end
 
 program csdid_simple,  rclass sortpreserve
-	syntax , [post estore(name)]
-	local simple `simple' (simple: ( ( 
-	foreach i in `e(glev)' {
-   		local time1 = `e(time0)'
-		foreach j in `e(tlev)' {
-			*local time1 = min(`i'-1, `j'-1)
-			if (`i'<=`j') {
-				local simple `simple' [g`i']t_`time1'_`j'*[wgt]w`i'+
-				local wcl      `wcl' 	  [wgt]w`i'+
-			}
-			if `j'<`i' local time1 = `j'							
-		}
-	}
-	local simple `simple' 0)/(`wcl'0)))
-	display "Simple Average Treatment"
-	
-	if "`post'`estore'"=="" {
-		nlcom  `simple', noheader
-		tempvar b V
-		matrix `b' = r(b)
-		matrix `V' = r(V)
-		return matrix b_simple = `b'
-		return matrix V_simple = `V'
-	}
-	else if "`post'"!="" & "`estore'"==""  {
-	    nlcom `simple', noheader post
-	}
-	else if "`estore'"!="" & "`post'"==""  {
-	   	tempname lastreg
-		tempvar b V table
-		capture:est store `lastreg'
-		nlcom `simple', noheader post
-		est store `estore'
-		display "Output store in `estore'"
-		matrix `b' = e(b)
-		matrix `V' = e(V)
-		matrix `table' = r(table)
-		qui:est restore `lastreg'
-		return matrix b_simple 	= `b'
-		return matrix V_simple 	= `V'
-		return matrix table 	= `table'
-	}
+	syntax, [estore(name) esave(name) replace]
+ 	display "Average Treatment Effect on Treated"
+	mata:csdid_simple()
+	tempname lastreg
+	tempvar b V table
+	matrix `b' = r_b_
+	matrix `V' = r_V_
+	matrix colname `b' = ATT
+	matrix colname `V' = ATT
+	matrix rowname `V' = ATT
+	capture:est store `lastreg'	
+	ereturn clear
+	adde post `b' `V'
+	adde local cmd 	   estat
+	adde local cmdline estat simple
+	if "`estore'"!="" est store `estore'
+	if "`esave'" !="" est save  `esave', `replace'
+	_coef_table
+	matrix rtb=r(table)
+	qui:est restore `lastreg'
+	return matrix table = rtb
+	return matrix b = r_b_
+	return matrix V = r_V_
 end
 
 program csdid_group, sortpreserve rclass
-	syntax , [post estore(name)]
-
-	foreach i in `e(glev)'  {		
-   		local time1 = `e(time0)'
-		local group `group' (g`i': ( ( 
-		local cnt=0
-		foreach j in `e(tlev)' {
-			*local time1 = min(`i'-1, `j'-1)
-			if (`i'<=`j') {
-						local cnt=`cnt'+1
-				local group `group' [g`i']t_`time1'_`j'+
-			}
-			if `j'<`i' local time1 = `j'			
-		}
-		local group `group' 0)/`cnt'))
-	}
+	syntax, [estore(name) esave(name) replace]
+  	display "ATT by group"
+	mata:csdid_group()
+	tempname lastreg
+	tempvar b V table
+	matrix `b' = r_b_
+	matrix `V' = r_V_
 	
-	display "Group Effects"
-	if "`post'`estore'"=="" {
-		nlcom `group', noheader
-		tempvar b V
-		matrix `b' = r(b)
-		matrix `V' = r(V)
-		return matrix b_group = `b'
-		return matrix V_group = `V'
-	}
-	else if "`post'"!="" & "`estore'"==""  {
-	    nlcom `group', noheader post
-	}
-	else if "`estore'"!="" & "`post'"==""  {
-	   	tempname lastreg
-		tempvar b V table
-		capture:est store `lastreg'
-		nlcom `group', noheader post
-		est store `estore'
-		display "Output store in `estore'"
-		matrix `b' = e(b)
-		matrix `V' = e(V)
-		matrix `table' = r(table)
-		qui:est restore `lastreg'
-		return matrix b_group 	= `b'
-		return matrix V_group 	= `V'
-		return matrix table 	= `table'
-	}	
+	capture:est store `lastreg'	
+	ereturn clear
+	adde post `b' `V'
+	adde local cmd 	   estat
+	adde local cmdline estat group
+	if "`estore'"!="" est store `estore'
+	if "`esave'" !="" est save  `esave', `replace'
+	_coef_table
+	matrix rtb=r(table)
+	qui:est restore `lastreg'
+	return matrix table = rtb
+	return matrix b = r_b_
+	return matrix V = r_V_
 end
-
-program csdid_group_alt, sortpreserve rclass
-	syntax ,  
-	display "Group Effects"
-	foreach i in `e(glev)'  {		
-   		local time1 = `e(time0)'
-		local group (g`i': ( ( 
-		local cnt=0
-		foreach j in `e(tlev)' {
-			*local time1 = min(`i'-1, `j'-1)
-			if (`i'<=`j') {
-						local cnt=`cnt'+1
-				local group `group' [g`i']t_`time1'_`j'+
-			}
-			if `j'<`i' local time1 = `j'			
-
-		}
-		local group `group' 0)/`cnt'))
-		nlcom `group', noheader
-	}
-end
-
 
 program csdid_calendar, sortpreserve rclass
-	syntax , [post estore(name)]
-
-	** Verify Tlevel > glevel
-	local mint:word 1 of `e(glev)'
-	local time1 = `e(time0)'
-	foreach j in `e(tlev)' {
-		if `j' >= `mint' {
-		    local cnt=0    
-			local mcalendar   (t`j': ( ( 
-			macro drop _wcl
-*****************************************************************			
-			foreach i in `e(glev)' {
-				local time1 = `e(time0)'
-				foreach t in `e(tlev)' {
-					if (`i'<=`j' & `t'==`j') {
-						local cnt=`cnt'+1    
-						local mcalendar `mcalendar' [g`i']t_`time1'_`j'*[wgt]w`i'+
-						local wcl      `wcl' 	  [wgt]w`i'+ 
-					}					
-					if `t'<`i' local time1 = `t'			
-				}			    				
-			}
-*****************************************************************
-			local mcalendar `mcalendar' 0)/(`wcl'0)))
-			if `cnt'>0 local calendar `calendar' `mcalendar'
-		}
-	}
-	display "Time Estimated Effects"
-	if "`post'`estore'"=="" {
-		nlcom `calendar', noheader
-		tempvar b V
-		matrix `b' = r(b)
-		matrix `V' = r(V)
-		return matrix b_calendar = `b'
-		return matrix V_calendar = `V'	
-	}
-	else if "`post'"!="" & "`estore'"=="" {
-	    nlcom `calendar', noheader post
-	}
-	else if "`estore'"!="" & "`post'"==""  {
-	   	tempname lastreg
-		tempvar b V table
-		capture:est store `lastreg'
-		nlcom `calendar', noheader post
-		est store `estore'
-		display "Output store in `estore'"
-		matrix `b' = e(b)
-		matrix `V' = e(V)
-		matrix `table' = r(table)
-		qui:est restore `lastreg'
-		return matrix b_calendar 	= `b'
-		return matrix V_calendar 	= `V'
-		return matrix table 	= `table'
-	}
+	syntax, [estore(name) esave(name) replace]
+  	display "ATT by Calendar Period"
+	mata:csdid_calendar()
+	tempname lastreg
+	tempvar b V table
+	matrix `b' = r_b_
+	matrix `V' = r_V_
+	
+	capture:est store `lastreg'	
+	ereturn clear
+	adde post `b' `V'
+	adde local cmd 	   estat
+	adde local cmdline estat calendar
+	if "`estore'"!="" est store `estore'
+	if "`esave'" !="" est save  `esave', `replace'
+	_coef_table
+	matrix rtb=r(table)
+	qui:est restore `lastreg'
+	return matrix table = rtb
+	return matrix b = r_b_
+	return matrix V = r_V_
+	
 end
-
-program csdid_calendar_alt, sortpreserve rclass
-	syntax , [post estore(name)]
-	display "Time Estimated Effects"
-	** Verify Tlevel > glevel
-	local mint:word 1 of `e(glev)'	
-	foreach j in `e(tlev)' {
-	    local cnj=`cnj'+1
-		if `j' >= `mint' {
-		    local cnt=0    
-			local mcalendar   (t`j': ( ( 
-			macro drop _wcl
-*****************************************************************			
-			foreach i in `e(glev)' {
-				local time1 = `e(time0)'
-				foreach t in `e(tlev)' {
-					if (`i'<=`j' & `t'==`j') {
-						local cnt=`cnt'+1    
-						local mcalendar `mcalendar' [g`i']t_`time1'_`j'*[wgt]w`i'+
-						local wcl      `wcl' 	  [wgt]w`i'+ 
-					}					
-					if `t'<`i' local time1 = `t'			
-				}			    				
-			}
-*****************************************************************			
-			local mcalendar `mcalendar' 0)/(`wcl'0)))
-			if `cnt'>0 {
-				nlcom `mcalendar', noheader
-			}
-		}
-	}
-
-end
- 
  
 program csdid_event, sortpreserve rclass
-	syntax , [post estore(name) window(str)]
-
-	** Define groups
-	** G
-	event_dist, glist(`e(glev)') tlist(`e(tlev)') 
-	local elist `r(vlist)'
-	** redefine windows
+	syntax, [estore(name) esave(name) replace window(str) ]
+   	display "ATT by Periods Before and After treatment"
+	display "Event Study:Dynamic effects"
 	if "`window'"!="" {
-	    numlist "`window'", sort max(2) min(2)
-		local aux `r(numlist)'
-		local wmin:word 1 of `aux'
-		local wmax:word 2 of `aux'
-		
-		foreach i of local elist {
-		    if inrange(`i',`wmin',`wmax')   local eelist `eelist' `i'
-		}
-		local elist `eelist'			
+		numlist "`window'", min(2) max(2) sort integer
+		local window `r(numlist)'
 	}
+ 
+	mata:csdid_event("`window'")
+	tempname lastreg
+	tempvar b V table
+	matrix `b' = r_b_
+	matrix `V' = r_V_
 	
-	/*local tt : word count   `e(glev)'
-	local gmax: word `tt' of `e(glev)' 
-	local gmin: word  1   of `e(glev)'
-	** t
-	local tt : word count   `e(tlev)'
-	local tmax: word `tt' of `e(tlev)' 
-	local tmin: word  1   of `e(tlev)'
-
-	local emin= `tmin'-`gmax'
-	local emax= `tmax'-`gmin'*/
-
-	foreach e of local elist {
-	 
-		local e_t `=cond(sign(`e')<0,"_","")'`=abs(`e')'
-		local wcl 
-		local evnt0 `evnt0' (E`e_t': ( ( 
-		
-		foreach i in `e(glev)' {
-		    local time1 = `e(time0)'
-			foreach j in `e(tlev)' {
-					if `i'+`e'==`j' {
-						*display "g:`i' ; t: `time1' ; t1:`j'"
-						local evnt0 `evnt0'    [g`i']t_`time1'_`j'*[wgt]w`i'+
-						local wcl      `wcl' 	  [wgt]w`i'+				    
-					}
-					if `j'<`i' local time1 = `j'			
-				}
-			}
-			local evnt0 `evnt0' 0)/(`wcl'0)))
-		}
-	display "Event Studies:Dynamic effects"
-	if "`post'`estore'"=="" {
-		nlcom `evnt0', noheader
-		tempvar b V
-		matrix `b' = r(b)
-		matrix `V' = r(V)
-		return matrix b_event = `b'
-		return matrix V_event = `V'	
-	}
-	else if "`post'"!="" & "`estore'"=="" {
-	    nlcom `evnt0', noheader post
-	}
-	else if "`estore'"!="" & "`post'"==""  {
-	   	tempname lastreg
-		tempvar b V table
-		capture:est store `lastreg'
-		nlcom `evnt0', noheader post
-		est store `estore'
-		display "Output store in `estore'"
-		matrix `b' = e(b)
-		matrix `V' = e(V)
-		matrix `table' = r(table)
-		qui:est restore `lastreg'
-		return matrix b_event 	= `b'
-		return matrix V_event 	= `V'
-		return matrix table 	= `table'
-	}
+	capture:est store `lastreg'	
+	ereturn clear
+	adde post `b' `V'
+	adde local cmd 	   estat
+	adde local cmdline estat event
+	if "`estore'"!="" est store `estore'
+	if "`esave'" !="" est save  `esave', `replace'
+	_coef_table
+	matrix rtb=r(table)
+	qui:est restore `lastreg'
+	return matrix table = rtb
+	return matrix b = r_b_
+	return matrix V = r_V_
 end 
 
-program csdid_event_alt, sortpreserve rclass
-	syntax , [post estore(name)]
 
-	** Define groups
-	** G
-	event_dist, glist(`e(glev)') tlist(`e(tlev)') 
-	local elist `r(vlist)'
-	
-	display "Event Studies:Dynamic effects"
-	foreach e of local elist {
-	 
-		local e_t `=cond(sign(`e')<0,"_","")'`=abs(`e')'
-		local wcl 
-		local evnt0 (E`e_t': ( ( 
-	 
-		foreach i in `e(glev)' {
-		    local time1 = `e(time0)'
-			foreach j in `e(tlev)' {		    
-					if `i'+`e'==`j' {
-						*display "g:`i' ; t: `time1' ; t1:`j'"
-						local evnt0 `evnt0'    [g`i']t_`time1'_`j'*[wgt]w`i'+
-						local wcl      `wcl' 	  [wgt]w`i'+				    
-					}
-					if `j'<`i' local time1 = `j'
-				
-				}
-			}
-			local evnt0 `evnt0' 0)/(`wcl'0)))
-			nlcom `evnt0', noheader
-		}
-end 
-
-program event_dist, rclass
-	syntax, glist(string) tlist(string)
-
-	foreach i of local tlist {
-		foreach j of local glist {
-			local eve `eve' `=`i'-`j''
-		}
-	}
-	numlist "`eve'", sort
-	local eve `r(numlist)'
-	local j .
-	foreach i of local eve {
-	    if `i'!=`j' {
-		    local vlist `vlist' `i'
-			local j `i'
-		}
-	}
-	return local vlist `vlist'
+program adde, eclass
+        ereturn `0'
 end
+
+program addr, rclass
+        return `0'
+end
+
+mata
+void csdid_group(){
+    real matrix b, v , ii, jj, glvl, tlvl
+	glvl = strtoreal(tokens("`e(glev)'"));tlvl = strtoreal(tokens("`e(tlev)'"))	
+	b=st_matrix("e(b_attgt)");v=st_matrix("e(V_attgt)")
+	real scalar k, i, j, flag
+	string scalar coleqnm
+	ii=(1..(cols(glvl)*cols(tlvl))),(cols(glvl)*cols(tlvl)):+(1..cols(glvl))#J(1,cols(tlvl),1)
+	   //(cols(glvl)*cols(tlvl)):+
+	   //(1..cols(glvl))#J(1,cols(tlvl),1)
+	///v=v[ii,ii]
+	///b=b[ii]
+	real matrix br, bw
+	br=b[1,(1..(cols(ii)/2))]
+	bw=b[1,((cols(ii)/2+1)..cols(ii))]
+	ii=(1..(cols(glvl)*cols(tlvl)))
+	
+	k=0
+	coleqnm=""
+	real matrix iii
+	iii=J(0,cols(ii),.)
+	/// ag_wt=J(rows(rifwt),0,.)
+	for(i=1;i<=cols(glvl);i++) {
+	    ii=ii*0
+		flag = 0
+		for(j=1;j<=cols(tlvl);j++) {
+			k++
+			if (glvl[i]<=tlvl[j]) {
+				//ag_rif=ag_rif, rifgt[.,k]
+				ii[k]=1
+				flag=1
+			}
+		}
+		if (flag==1) {
+			iii=iii\ii
+			coleqnm=coleqnm+sprintf(" G%s",strofreal(glvl[i]))	
+		}
+	}
+	 
+	real matrix r1, r2
+	r1 = (bw :* iii):/rowsum(bw :* iii)
+	r2 = (br :* iii):/rowsum(bw :* iii):-rowsum((br:*iii):*(bw:*iii)):/(rowsum(bw :* iii):^2)
+	r2 = r2:*iii
+	real matrix bbb, vvv
+	bbb=rowsum(br :* bw:*iii):/rowsum(bw :* iii)
+ 
+	vvv=makesymmetric((r1,r2)*v*(r1,r2)')
+	
+	st_matrix("r_b_",bbb')
+	st_matrix("r_V_",vvv)
+	
+	stata("matrix colname r_b_ ="+coleqnm)
+	stata("matrix colname r_V_ ="+coleqnm)
+	stata("matrix rowname r_V_ ="+coleqnm)
+
+}
+ 
+ 
+void csdid_calendar(){
+    real matrix b, v , ii, jj, glvl, tlvl
+	glvl = strtoreal(tokens("`e(glev)'"));tlvl = strtoreal(tokens("`e(tlev)'"))	
+	b=st_matrix("e(b_attgt)");v=st_matrix("e(V_attgt)")
+	real scalar k, i, j, h, flag
+	string scalar coleqnm
+	ii=(1..(cols(glvl)*cols(tlvl))),(cols(glvl)*cols(tlvl)):+(1..cols(glvl))#J(1,cols(tlvl),1)
+
+	//v=v[ii,ii]
+	//b=b[ii]
+	real matrix br, bw
+	br=b[1,(1..(cols(ii)/2))]
+	bw=b[1,((cols(ii)/2+1)..cols(ii))]
+	ii=(1..(cols(glvl)*cols(tlvl)))
+
+	coleqnm=""
+	real matrix iii
+	iii=J(0,cols(ii),.)
+	
+	for(h=1;h<=cols(tlvl);h++){
+		k=0
+		flag=0
+		ii=ii*0
+		for(i=1;i<=cols(glvl);i++) {
+			for(j=1;j<=cols(tlvl);j++) {
+				k++
+				if ((glvl[i]<=tlvl[j]) & (tlvl[h]==tlvl[j]) ){
+					ii[k] = 1
+					if (flag==0) coleqnm=coleqnm+sprintf(" T%s",strofreal(tlvl[h]))
+					flag=1
+				}
+			}
+		}
+		if (flag == 1) iii=iii\ii
+	}
+	real matrix r1, r2
+	r1 = (bw :* iii):/rowsum(bw :* iii)
+	r2 = (br :* iii):/rowsum(bw :* iii):-rowsum((br:*iii):*(bw:*iii)):/(rowsum(bw :* iii):^2)
+	r2 = r2:*iii
+	real matrix bbb, vvv
+	bbb=rowsum(br :* bw:*iii):/rowsum(bw :* iii)
+ 
+	vvv=makesymmetric((r1,r2)*v*(r1,r2)')
+	
+	st_matrix("r_b_",bbb')
+	st_matrix("r_V_",vvv)
+	
+	stata("matrix colname r_b_ ="+coleqnm)
+	stata("matrix colname r_V_ ="+coleqnm)
+	stata("matrix rowname r_V_ ="+coleqnm)
+	}
+
+void csdid_pretrend(){
+    real matrix b, v , ii, glvl, tlvl
+	glvl = strtoreal(tokens("`e(glev)'"));tlvl = strtoreal(tokens("`e(tlev)'"))	
+	b=st_matrix("e(b_attgt)");v=st_matrix("e(V_attgt)")
+	real scalar k, i, j
+	k=0;ii=J(1,0,.)
+	for(i=1;i<=cols(glvl);i++) {
+		for(j=1;j<=cols(tlvl);j++) {
+			k++
+			if (glvl[i]>tlvl[j]) {
+				ii=ii,k				
+			}
+		}
+	}
+	real matrix bb, vv
+	bb=b[ii];vv=v[ii,ii]
+	real scalar chi2, df
+	chi2=bb*invsym(vv)*bb'
+	df = cols(bb)
+	st_numscalar("r(chi2)",chi2)
+	st_numscalar("r(df)",df)
+	st_numscalar("r(pchi2)",chi2tail(df,chi2))
+}
+
+ 
+void csdid_simple() {
+	real matrix b, v , ii, jj, glvl, tlvl
+	glvl = strtoreal(tokens("`e(glev)'"));tlvl = strtoreal(tokens("`e(tlev)'"))	
+	b=st_matrix("e(b_attgt)");v=st_matrix("e(V_attgt)")
+	
+	real scalar k, i, j
+	k=0
+	real matrix br, bw
+	ii=(1..2*(cols(glvl)*cols(tlvl)))
+	br=b[1,(1..(cols(ii)/2))]
+	bw=b[1,((cols(ii)/2+1)..cols(ii))]
+	ii=(1..(cols(glvl)*cols(tlvl)))
+	
+	
+	ii=ii*0
+
+	for(i=1;i<=cols(glvl);i++) {
+		for(j=1;j<=cols(tlvl);j++) {
+			k++
+			if (glvl[i]<=tlvl[j]) {
+				ii[k] = 1
+				//jj=jj,i
+			}
+		}
+	}
+	
+	real matrix r1, r2
+	r1 = (bw :* ii):/rowsum(bw :* ii)
+	r2 = (br :* ii):/rowsum(bw :* ii):-rowsum((br:*ii):*(bw:*ii)):/(rowsum(bw :* ii):^2)
+	r2 = r2:*ii
+	real matrix bbb, vvv
+	bbb=rowsum(br :* bw:*ii):/rowsum(bw :* ii)
+ 
+	vvv=makesymmetric((r1,r2)*v*(r1,r2)')
+	
+
+	st_matrix("r_b_",bbb)
+	st_matrix("r_V_",vvv)
+}
+
+vector event_list(real matrix glvl, tlvl,window){
+ 	real matrix toreturn, toreturn2
+	real scalar i,j
+	toreturn=J(1,0,.)
+	toreturn2=J(1,0,.)
+	for(i=1;i<=cols(glvl);i++) {
+		for(j=1;j<=cols(tlvl);j++) {
+			toreturn=toreturn,(glvl[i]-tlvl[j])
+		}
+	}
+	toreturn=uniqrows(toreturn')'
+	 
+	if (cols(window)==0) return(toreturn)
+	else {
+	    for(i=1;i<=cols(toreturn);i++){
+		    if  ( (toreturn[i]>=window[1]) & (toreturn[i]<=window[2]) )    toreturn2=toreturn2,toreturn[i]
+		}
+		 
+		return(toreturn2)
+	}
+ }
+  
+ void csdid_event(string scalar wnw){
+    real matrix b, v , ii, jj, glvl, tlvl, wndw
+	glvl = strtoreal(tokens("`e(glev)'"));tlvl = strtoreal(tokens("`e(tlev)'"))	
+	wndw=strtoreal(tokens(wnw))
+	
+	real matrix evnt_lst
+	evnt_lst=event_list(glvl,tlvl,wndw)
+		
+	b=st_matrix("e(b_attgt)");v=st_matrix("e(V_attgt)")
+	real scalar k, i, j, h, flag
+	string scalar coleqnm
+	ii=(1..(cols(glvl)*cols(tlvl))),(cols(glvl)*cols(tlvl)):+(1..cols(glvl))#J(1,cols(tlvl),1)
+
+	//v=v[ii,ii]
+	//b=b[ii]
+	real matrix br, bw
+	br=b[1,(1..(cols(ii)/2))]
+	bw=b[1,((cols(ii)/2+1)..cols(ii))]
+	ii=(1..(cols(glvl)*cols(tlvl)))
+
+	coleqnm=""
+	real matrix iii
+	iii=J(0,cols(ii),.)
+	
+	for(h=1;h<=cols(evnt_lst);h++){
+		k=0
+		flag=0
+		ii=ii*0
+		for(i=1;i<=cols(glvl);i++) {
+			for(j=1;j<=cols(tlvl);j++) {
+				k++
+				if ( (glvl[i]+evnt_lst[h])==tlvl[j] ) {	
+					//ag_rif=ag_rif, rifgt[.,k]
+					//ag_wt =ag_wt , rifwt[.,i]
+					ii[k] = 1						
+					if (flag==0) {
+						if (evnt_lst[h]< 0) coleqnm=coleqnm+sprintf(" T%s" ,strofreal(evnt_lst[h]))
+						if (evnt_lst[h]==0) coleqnm=coleqnm+" T"
+						if (evnt_lst[h]> 0) coleqnm=coleqnm+sprintf(" T+%s",strofreal(evnt_lst[h]))
+					}
+					flag=1
+				}
+			}
+		}
+		if (flag == 1) iii=iii\ii
+	}
+	real matrix r1, r2
+	r1 = (bw :* iii):/rowsum(bw :* iii)
+	r2 = (br :* iii):/rowsum(bw :* iii):-rowsum((br:*iii):*(bw:*iii)):/(rowsum(bw :* iii):^2)
+	r2 = r2:*iii
+	real matrix bbb, vvv
+	bbb=rowsum(br :* bw:*iii):/rowsum(bw :* iii)
+ 
+	vvv=makesymmetric((r1,r2)*v*(r1,r2)')
+	
+	st_matrix("r_b_",bbb')
+	st_matrix("r_V_",vvv)
+	
+	stata("matrix colname r_b_ ="+coleqnm)
+	stata("matrix colname r_V_ ="+coleqnm)
+	stata("matrix rowname r_V_ ="+coleqnm)
+	}
+end
+
+ 
  
 program stuff
 ************ Estat
@@ -412,7 +476,13 @@ foreach j in 2004 2005 2006 2007 {
 local simple `simple' 0)/(`wcl'0)))
 display "`simple'"
 nlcom  `simple'
-nlcom (Simple: ((_b[g2004:t_2003_2004]+_b[g2004:t_2003_2005]+_b[g2004:t_2003_2006]+_b[g2004:t_2003_2007])*_b[wgt:w2004]+ 	   (_b[g2006:t_2005_2006]+_b[g2006:t_2005_2007])*_b[wgt:w2006]+_b[g2007:t_2006_2007]*_b[wgt:w2007])/(_b[wgt:w2004]*4+_b[wgt:w2006]*2+_b[wgt:w2007]) )
+nlcom (Simple: ((_b[g2004:t_2003_2004]+
+				_b[g2004:t_2003_2005]+
+				_b[g2004:t_2003_2006]+
+				_b[g2004:t_2003_2007])*_b[wgt:w2004]+ 
+				(_b[g2006:t_2005_2006]
+				+_b[g2006:t_2005_2007])*_b[wgt:w2006]
+				+_b[g2007:t_2006_2007]*_b[wgt:w2007])/(_b[wgt:w2004]*4+_b[wgt:w2006]*2+_b[wgt:w2007]) )
 }
 ** estat ** group
 qui {
