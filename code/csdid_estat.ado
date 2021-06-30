@@ -34,7 +34,7 @@ end
 program csdid_pretrend, sortpreserve rclass
 	clrreturn
 	display "Pretrend Test. H0 All Pre-treatment are equal to 0"
-	mata:csdid_pretrend()
+	mata:csdid_pretrend("e(b_attgt)","e(V_attgt)","`e(glev)'","`e(tlev)'")
 	display "chi2(`r(df)') = `r(chi2)'"
 	display "p-value       = `r(pchi2)'"
 end
@@ -67,11 +67,11 @@ program csdid_attgt,  rclass sortpreserve
 	return matrix b = r_b_
 	return matrix V = r_V_
 end
-
+	
 program csdid_simple,  rclass sortpreserve
 	syntax, [estore(name) esave(name) replace]
  	display "Average Treatment Effect on Treated"
-	mata:csdid_simple()
+	mata:csdid_simple("e(b_attgt)","e(V_attgt)","`e(glev)'","`e(tlev)'")
 	tempname lastreg
 	tempvar b V table
 	matrix `b' = r_b_
@@ -97,7 +97,7 @@ end
 program csdid_group, sortpreserve rclass
 	syntax, [estore(name) esave(name) replace]
   	display "ATT by group"
-	mata:csdid_group()
+	mata:csdid_group("e(b_attgt)","e(V_attgt)","`e(glev)'","`e(tlev)'")
 	tempname lastreg
 	tempvar b V table
 	matrix `b' = r_b_
@@ -121,7 +121,7 @@ end
 program csdid_calendar, sortpreserve rclass
 	syntax, [estore(name) esave(name) replace]
   	display "ATT by Calendar Period"
-	mata:csdid_calendar()
+	mata:csdid_calendar("e(b_attgt)","e(V_attgt)","`e(glev)'","`e(tlev)'")
 	tempname lastreg
 	tempvar b V table
 	matrix `b' = r_b_
@@ -152,7 +152,7 @@ program csdid_event, sortpreserve rclass
 		local window `r(numlist)'
 	}
  
-	mata:csdid_event("`window'")
+	mata:csdid_event("e(b_attgt)","e(V_attgt)","`e(glev)'","`e(tlev)'","`window'")
 	tempname lastreg
 	tempvar b V table
 	matrix `b' = r_b_
@@ -183,17 +183,15 @@ program addr, rclass
 end
 
 mata
-void csdid_group(){
+void csdid_group(string scalar bb_, vv_, gl_, tl_){
     real matrix b, v , ii, jj, glvl, tlvl
-	glvl = strtoreal(tokens("`e(glev)'"));tlvl = strtoreal(tokens("`e(tlev)'"))	
-	b=st_matrix("e(b_attgt)");v=st_matrix("e(V_attgt)")
+	
+	glvl = strtoreal(tokens(gl_));tlvl = strtoreal(tokens(tl_))	
+	b=st_matrix(bb_);v=st_matrix(vv_)
 	real scalar k, i, j, flag
 	string scalar coleqnm
 	ii=(1..(cols(glvl)*cols(tlvl))),(cols(glvl)*cols(tlvl)):+(1..cols(glvl))#J(1,cols(tlvl),1)
-	   //(cols(glvl)*cols(tlvl)):+
-	   //(1..cols(glvl))#J(1,cols(tlvl),1)
-	///v=v[ii,ii]
-	///b=b[ii]
+     
 	real matrix br, bw
 	br=b[1,(1..(cols(ii)/2))]
 	bw=b[1,((cols(ii)/2+1)..cols(ii))]
@@ -209,7 +207,7 @@ void csdid_group(){
 		flag = 0
 		for(j=1;j<=cols(tlvl);j++) {
 			k++
-			if (glvl[i]<=tlvl[j]) {
+			if ((glvl[i]<=tlvl[j]) & (b[k]!=0) ) {
 				//ag_rif=ag_rif, rifgt[.,k]
 				ii[k]=1
 				flag=1
@@ -230,6 +228,7 @@ void csdid_group(){
  
 	vvv=makesymmetric((r1,r2)*v*(r1,r2)')
 	
+	
 	st_matrix("r_b_",bbb')
 	st_matrix("r_V_",vvv)
 	
@@ -240,10 +239,10 @@ void csdid_group(){
 }
  
  
-void csdid_calendar(){
+void csdid_calendar(string scalar bb_, vv_, gl_, tl_){
     real matrix b, v , ii, jj, glvl, tlvl
-	glvl = strtoreal(tokens("`e(glev)'"));tlvl = strtoreal(tokens("`e(tlev)'"))	
-	b=st_matrix("e(b_attgt)");v=st_matrix("e(V_attgt)")
+	glvl = strtoreal(tokens(gl_));tlvl = strtoreal(tokens(tl_))	
+	b=st_matrix(bb_);v=st_matrix(vv_)
 	real scalar k, i, j, h, flag
 	string scalar coleqnm
 	ii=(1..(cols(glvl)*cols(tlvl))),(cols(glvl)*cols(tlvl)):+(1..cols(glvl))#J(1,cols(tlvl),1)
@@ -266,7 +265,7 @@ void csdid_calendar(){
 		for(i=1;i<=cols(glvl);i++) {
 			for(j=1;j<=cols(tlvl);j++) {
 				k++
-				if ((glvl[i]<=tlvl[j]) & (tlvl[h]==tlvl[j]) ){
+				if ((glvl[i]<=tlvl[j]) & (tlvl[h]==tlvl[j]) & (b[k]!=0) ){
 					ii[k] = 1
 					if (flag==0) coleqnm=coleqnm+sprintf(" T%s",strofreal(tlvl[h]))
 					flag=1
@@ -292,16 +291,16 @@ void csdid_calendar(){
 	stata("matrix rowname r_V_ ="+coleqnm)
 	}
 
-void csdid_pretrend(){
+void csdid_pretrend(string scalar bb_, vv_, gl_, tl_){
     real matrix b, v , ii, glvl, tlvl
-	glvl = strtoreal(tokens("`e(glev)'"));tlvl = strtoreal(tokens("`e(tlev)'"))	
-	b=st_matrix("e(b_attgt)");v=st_matrix("e(V_attgt)")
+	glvl = strtoreal(tokens(gl_));tlvl = strtoreal(tokens(tl_))	
+	b=st_matrix(bb_);v=st_matrix(vv_)
 	real scalar k, i, j
 	k=0;ii=J(1,0,.)
 	for(i=1;i<=cols(glvl);i++) {
 		for(j=1;j<=cols(tlvl);j++) {
 			k++
-			if (glvl[i]>tlvl[j]) {
+			if ( (glvl[i]>tlvl[j]) & (b[k]!=0) )  {
 				ii=ii,k				
 			}
 		}
@@ -317,10 +316,10 @@ void csdid_pretrend(){
 }
 
  
-void csdid_simple() {
+void csdid_simple(string scalar bb_, vv_, gl_, tl_) {
 	real matrix b, v , ii, jj, glvl, tlvl
-	glvl = strtoreal(tokens("`e(glev)'"));tlvl = strtoreal(tokens("`e(tlev)'"))	
-	b=st_matrix("e(b_attgt)");v=st_matrix("e(V_attgt)")
+	glvl = strtoreal(tokens(gl_));tlvl = strtoreal(tokens(tl_))	
+	b=st_matrix(bb_);v=st_matrix(vv_)
 	
 	real scalar k, i, j
 	k=0
@@ -329,31 +328,28 @@ void csdid_simple() {
 	br=b[1,(1..(cols(ii)/2))]
 	bw=b[1,((cols(ii)/2+1)..cols(ii))]
 	ii=(1..(cols(glvl)*cols(tlvl)))
-	
-	
+  
 	ii=ii*0
 
 	for(i=1;i<=cols(glvl);i++) {
 		for(j=1;j<=cols(tlvl);j++) {
 			k++
-			if (glvl[i]<=tlvl[j]) {
+			if ((glvl[i]<=tlvl[j]) & (b[k]!=0)) {
 				ii[k] = 1
 				//jj=jj,i
 			}
 		}
 	}
-	
-	real matrix r1, r2
+ 	real matrix r1, r2
 	r1 = (bw :* ii):/rowsum(bw :* ii)
 	r2 = (br :* ii):/rowsum(bw :* ii):-rowsum((br:*ii):*(bw:*ii)):/(rowsum(bw :* ii):^2)
 	r2 = r2:*ii
-	real matrix bbb, vvv
-	bbb=rowsum(br :* bw:*ii):/rowsum(bw :* ii)
+ 	real matrix bbb, vvv
  
-	vvv=makesymmetric((r1,r2)*v*(r1,r2)')
+	bbb=rowsum(br :* bw:*ii):/rowsum(bw :* ii)
+ 	vvv=makesymmetric((r1,r2)*v*(r1,r2)')
 	
-
-	st_matrix("r_b_",bbb)
+ 	st_matrix("r_b_",bbb)
 	st_matrix("r_V_",vvv)
 }
 
@@ -364,7 +360,7 @@ vector event_list(real matrix glvl, tlvl,window){
 	toreturn2=J(1,0,.)
 	for(i=1;i<=cols(glvl);i++) {
 		for(j=1;j<=cols(tlvl);j++) {
-			toreturn=toreturn,(glvl[i]-tlvl[j])
+			toreturn=toreturn,(tlvl[i]-glvl[j])
 		}
 	}
 	toreturn=uniqrows(toreturn')'
@@ -379,15 +375,15 @@ vector event_list(real matrix glvl, tlvl,window){
 	}
  }
   
- void csdid_event(string scalar wnw){
+ void csdid_event(string scalar  bb_, vv_, gl_, tl_, wnw){
     real matrix b, v , ii, jj, glvl, tlvl, wndw
-	glvl = strtoreal(tokens("`e(glev)'"));tlvl = strtoreal(tokens("`e(tlev)'"))	
+	glvl = strtoreal(tokens(gl_));tlvl = strtoreal(tokens(tl_))	
+	b=st_matrix(bb_);v=st_matrix(vv_)
 	wndw=strtoreal(tokens(wnw))
-	
+	 
 	real matrix evnt_lst
 	evnt_lst=event_list(glvl,tlvl,wndw)
-		
-	b=st_matrix("e(b_attgt)");v=st_matrix("e(V_attgt)")
+		evnt_lst
 	real scalar k, i, j, h, flag
 	string scalar coleqnm
 	ii=(1..(cols(glvl)*cols(tlvl))),(cols(glvl)*cols(tlvl)):+(1..cols(glvl))#J(1,cols(tlvl),1)
@@ -410,7 +406,7 @@ vector event_list(real matrix glvl, tlvl,window){
 		for(i=1;i<=cols(glvl);i++) {
 			for(j=1;j<=cols(tlvl);j++) {
 				k++
-				if ( (glvl[i]+evnt_lst[h])==tlvl[j] ) {	
+				if ( ( (glvl[i]+evnt_lst[h])==tlvl[j] ) & (b[k]!=0) ) {	
 					//ag_rif=ag_rif, rifgt[.,k]
 					//ag_wt =ag_wt , rifwt[.,i]
 					ii[k] = 1						
