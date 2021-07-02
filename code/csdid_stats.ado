@@ -58,13 +58,15 @@ program csdid_stats, rclass
 	capture:est store `lastreg'	
 	ereturn clear
 	adde post `b' `V'
-	adde local cmd 	   estat
-	adde local cmdline estat `agg'
+	adde local cmd 	     csdid
+	adde local cmd2	     estat
+	adde local cmdline   estat `agg'
+	adde local estat_cmd csdid_estat
 	if "`estore'"!="" est store `estore'
 	if "`esave'" !="" est save  `esave', `replace'
 	_coef_table
 	matrix rtb=r(table)
-	qui:est restore `lastreg'
+	capture:qui:est restore `lastreg'
 	return matrix table = rtb
 	return matrix b `b1'
 	return matrix V `s1'
@@ -80,7 +82,7 @@ mata:
 	toreturn=J(1,0,.)
 	for(i=1;i<=cols(glvl);i++) {
 		for(j=1;j<=cols(tlvl);j++) {
-			toreturn=toreturn,(glvl[i]-tlvl[j])
+			toreturn=toreturn,(tlvl[j]-glvl[i])
 		}
 	}
 	return(uniqrows(toreturn')')
@@ -120,13 +122,14 @@ void makerif2(string scalar rifgt_ , rifwt_ , agg,
 	if (agg=="simple") {
 		k=0
 		ind_gt=J(1,0,.)
-		ind_wt=J(1,0,.)
+		// to verify is combination exists
+		ind_wt=colsum(abs(rifgt))
  
 		for(i=1;i<=cols(glvl);i++) {
 			for(j=1;j<=cols(tlvl);j++) {
 				k++
 				// G <= T
- 				if (glvl[i]<=tlvl[j]) {
+ 				if ((glvl[i]<=tlvl[j]) & (ind_wt[k]!=0)) {
 					//ag_rif=ag_rif, rifgt[.,k]
 					//ag_wt =ag_wt , rifwt[.,i]
 					ind_gt=ind_gt,k
@@ -149,6 +152,8 @@ void makerif2(string scalar rifgt_ , rifwt_ , agg,
 		
 		aux    =J(rows(rifwt),0,.)
 		coleqnm=""
+		ind_wt=colsum(abs(rifgt))
+
 		/// ag_wt=J(rows(rifwt),0,.)
 		for(i=1;i<=cols(glvl);i++) {
 			ind_gt=J(1,0,.)
@@ -156,7 +161,7 @@ void makerif2(string scalar rifgt_ , rifwt_ , agg,
 			ag_rif=J(rows(rifwt),0,.)
 			for(j=1;j<=cols(tlvl);j++) {
 				k++
- 				if (glvl[i]<=tlvl[j]) {
+ 				if ((glvl[i]<=tlvl[j]) & (ind_wt[k]!=0)) {
 					//ag_rif=ag_rif, rifgt[.,k]
 					flag=1
 					ind_gt=ind_gt,k
@@ -179,31 +184,35 @@ void makerif2(string scalar rifgt_ , rifwt_ , agg,
 		// i groups j time
 		aux =J(rows(rifwt),0,.)
 		coleqnm=""
+		ind_wt=colsum(abs(rifgt))
 		
 		for(h=1;h<=cols(tlvl);h++){
 			k=0
 			flag=0
 			ind_gt=J(1,0,.)
-			ind_wt=J(1,0,.)	
+		
 			/// ag_wt=J(rows(rifwt),0,.)
  
 			for(i=1;i<=cols(glvl);i++) {
 				for(j=1;j<=cols(tlvl);j++) {
 					k++
-					if ((glvl[i]<=tlvl[j]) & (tlvl[h]==tlvl[j]) ){
+					if ( (glvl[i]<=tlvl[j]) & (tlvl[h]==tlvl[j]) & (ind_wt[k]!=0) ){
 						//ag_rif=ag_rif, rifgt[.,k]
 						//ag_wt =ag_wt , rifwt[.,i]
 						ind_gt=ind_gt,k
-						ind_wt=ind_wt,i						
+						//ind_wt=ind_wt,i						
 						if (flag==0) coleqnm=coleqnm+sprintf(" T%s",strofreal(tlvl[h]))
 						flag=1
 					}
 				}
 				
 			}
-			ag_rif = rifgt[.,ind_gt]
-			ag_wt  = rifwt[.,ind_gt]			
-			aux = aux, aggte(ag_rif, ag_wt)
+			
+			if (flag==1) {
+				ag_rif = rifgt[.,ind_gt]
+				ag_wt  = rifwt[.,ind_gt]
+				aux = aux, aggte(ag_rif, ag_wt)
+ 			}
 		}	
 		// get table elements		
 		make_tbl(aux ,bb,VV,clvar_,wboot_)
@@ -214,22 +223,22 @@ void makerif2(string scalar rifgt_ , rifwt_ , agg,
 		real matrix evnt_lst
 		evnt_lst=event_list(glvl,tlvl)
 		coleqnm=""
+		ind_wt=colsum(abs(rifgt))
 		aux =J(rows(rifwt),0,.)
 		for(h=1;h<=cols(evnt_lst);h++){
 			k=0
 			flag=0
 			ind_gt=J(1,0,.)
-			ind_wt=J(1,0,.)			
-			/// ag_wt=J(rows(rifwt),0,.)
+ 			/// ag_wt=J(rows(rifwt),0,.)
  
 			for(i=1;i<=cols(glvl);i++) {
 				for(j=1;j<=cols(tlvl);j++) {
 					k++					
-					if ( (glvl[i]+evnt_lst[h])==tlvl[j] ) {	
+					if ( ((glvl[i]+evnt_lst[h])==tlvl[j])  & (ind_wt[k]!=0) ) {	
 						//ag_rif=ag_rif, rifgt[.,k]
 						//ag_wt =ag_wt , rifwt[.,i]
 						ind_gt=ind_gt,k
-						ind_wt=ind_wt,i							
+						//ind_wt=ind_wt,i							
 						if (flag==0) {
 							if (evnt_lst[h]< 0) coleqnm=coleqnm+sprintf(" T%s" ,strofreal(evnt_lst[h]))
 							if (evnt_lst[h]==0) coleqnm=coleqnm+" T"
@@ -240,9 +249,11 @@ void makerif2(string scalar rifgt_ , rifwt_ , agg,
 				}
 				
 			}
-			ag_rif = rifgt[.,ind_gt]
-			ag_wt  = rifwt[.,ind_gt]			
-			aux = aux, aggte(ag_rif, ag_wt)
+			if (flag==1) {
+				ag_rif = rifgt[.,ind_gt]
+				ag_wt  = rifwt[.,ind_gt]			
+				aux = aux, aggte(ag_rif, ag_wt)
+			}
 		}	
 		// get table elements		
 		make_tbl(aux ,bb,VV,clvar_,wboot_)

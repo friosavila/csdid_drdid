@@ -520,7 +520,7 @@ mata:
 	toreturn=J(1,0,.)
 	for(i=1;i<=cols(glvl);i++) {
 		for(j=1;j<=cols(tlvl);j++) {
-			toreturn=toreturn,(glvl[i]-tlvl[j])
+			toreturn=toreturn,(tlvl[j]-glvl[i])
 		}
 	}
 	return(uniqrows(toreturn')')
@@ -595,13 +595,13 @@ void makerif2(string scalar rifgt_ , rifwt_ , wgt_, agg,
 	if (agg=="simple") {
 		k=0
 		ind_gt=J(1,0,.)
-		ind_wt=J(1,0,.)
+		ind_wt=colsum(abs(rifgt))
  
 		for(i=1;i<=cols(glvl);i++) {
 			for(j=1;j<=cols(tlvl);j++) {
 				k++
 				// G <= T
- 				if (glvl[i]<=tlvl[j]) {
+ 				if ( (glvl[i]<=tlvl[j]) & (ind_wt[k]!=0) ) {
 					//ag_rif=ag_rif, rifgt[.,k]
 					//ag_wt =ag_wt , rifwt[.,i]
 					ind_gt=ind_gt,k
@@ -621,11 +621,12 @@ void makerif2(string scalar rifgt_ , rifwt_ , wgt_, agg,
 	if (agg=="pretrend") {
 		k=0
 		ind_gt=J(1,0,.)
-  
+  		ind_wt=colsum(abs(rifgt))
+
 		for(i=1;i<=cols(glvl);i++) {
 			for(j=1;j<=cols(tlvl);j++) {
 				k++
- 				if (glvl[i]>tlvl[j]) {
+ 				if ( (glvl[i]>tlvl[j]) & (ind_wt[k]!=0) ) {
 					//ag_rif=ag_rif, rifgt[.,k]
 					ind_gt=ind_gt,k
  				}
@@ -644,17 +645,19 @@ void makerif2(string scalar rifgt_ , rifwt_ , wgt_, agg,
 	if (agg=="group") {
 		// i groups j time
 		k=0
-			
+		ind_wt=colsum(abs(rifgt))
+	
 		aux    =J(rows(rifwt),0,.)
 		coleqnm=""
 		/// ag_wt=J(rows(rifwt),0,.)
 		for(i=1;i<=cols(glvl);i++) {
 		ind_gt=J(1,0,.)
+		
 		flag=0
 			ag_rif=J(rows(rifwt),0,.)
 			for(j=1;j<=cols(tlvl);j++) {
 				k++
- 				if (glvl[i]<=tlvl[j]) {
+ 				if ((glvl[i]<=tlvl[j]) & (ind_wt[k]!=0)) {
 					//ag_rif=ag_rif, rifgt[.,k]
 					flag=1
 					ind_gt=ind_gt,k
@@ -676,18 +679,19 @@ void makerif2(string scalar rifgt_ , rifwt_ , wgt_, agg,
 		// i groups j time
 		aux =J(rows(rifwt),0,.)
 		coleqnm=""
-		
+		ind_wt=colsum(abs(rifgt))
+
 		for(h=1;h<=cols(tlvl);h++){
 			k=0
 			flag=0
 			ind_gt=J(1,0,.)
-			ind_wt=J(1,0,.)	
+			//ind_wt=J(1,0,.)	
 			/// ag_wt=J(rows(rifwt),0,.)
  
 			for(i=1;i<=cols(glvl);i++) {
 				for(j=1;j<=cols(tlvl);j++) {
 					k++
-					if ((glvl[i]<=tlvl[j]) & (tlvl[h]==tlvl[j]) ){
+					if ( (glvl[i]<=tlvl[j]) & (tlvl[h]==tlvl[j]) & (ind_wt[k]!=0) ){
 						//ag_rif=ag_rif, rifgt[.,k]
 						//ag_wt =ag_wt , rifwt[.,i]
 						ind_gt=ind_gt,k
@@ -698,9 +702,11 @@ void makerif2(string scalar rifgt_ , rifwt_ , wgt_, agg,
 				}
 				
 			}
-			ag_rif = rifgt[.,ind_gt]
-			ag_wt  = rifwt[.,ind_gt]			
-			aux = aux, aggte(ag_rif, ag_wt)
+			if (flag==1) {
+				ag_rif = rifgt[.,ind_gt]
+				ag_wt  = rifwt[.,ind_gt]			
+				aux = aux, aggte(ag_rif, ag_wt)
+			}
 		}	
 		// get table elements		
 		make_tbl(aux ,bb,VV,clvar_, wboot_ ,VV1 )
@@ -711,18 +717,19 @@ void makerif2(string scalar rifgt_ , rifwt_ , wgt_, agg,
 		real matrix evnt_lst
 		evnt_lst=event_list(glvl,tlvl)
 		coleqnm=""
+		ind_wt=colsum(abs(rifgt))
+
 		aux =J(rows(rifwt),0,.)
 		for(h=1;h<=cols(evnt_lst);h++){
 			k=0
 			flag=0
 			ind_gt=J(1,0,.)
-			ind_wt=J(1,0,.)			
-			/// ag_wt=J(rows(rifwt),0,.)
+ 			/// ag_wt=J(rows(rifwt),0,.)
  
 			for(i=1;i<=cols(glvl);i++) {
 				for(j=1;j<=cols(tlvl);j++) {
 					k++					
-					if ( (glvl[i]+evnt_lst[h])==tlvl[j] ) {	
+					if ( ( (glvl[i]+evnt_lst[h])==tlvl[j] )  & (ind_wt[k]!=0) ) {	
 						//ag_rif=ag_rif, rifgt[.,k]
 						//ag_wt =ag_wt , rifwt[.,i]
 						ind_gt=ind_gt,k
@@ -737,9 +744,11 @@ void makerif2(string scalar rifgt_ , rifwt_ , wgt_, agg,
 				}
 				
 			}
-			ag_rif = rifgt[.,ind_gt]
-			ag_wt  = rifwt[.,ind_gt]			
-			aux = aux, aggte(ag_rif, ag_wt)
+			if (flag==1) {
+				ag_rif = rifgt[.,ind_gt]
+				ag_wt  = rifwt[.,ind_gt]			
+				aux = aux, aggte(ag_rif, ag_wt)
+			}	
 		}	
 		// get table elements		
 		make_tbl(aux ,bb,VV,clvar_, wboot_ ,VV1)
