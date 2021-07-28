@@ -7,8 +7,99 @@ program addr, rclass
         return `0'
 end
 
-program csdid_stats, rclass
-	syntax [anything],  [wboot] [estore(name) esave(name) replace]
+program adds, rclass
+        return `0'
+end
+
+program csdid_stats,  
+        version 14
+        if replay() {
+                if `"`e(cmd)'"' != "csdid" { 
+                        error 301
+                }
+                else {
+                        Display `0'
+                }
+                exit
+        }
+ 
+		
+		csdid_est `0'
+end 
+
+program _Parse_Wildboot, rclass 
+	syntax 			, [			///
+					   WBOOT1				///
+					   WBOOT(str)			///
+					   reps(integer 999) 	///
+					   rseed(string) 		///
+					   wbtype(string)		///
+					   cluster(string)		///
+					   ]
+
+	marksample touse 
+	if ("`wboot1'"=="" & "`wboot'"!="") {
+	    _Parse2_wboot, `wboot'
+		return scalar reps= `r(reps)'
+		return local  seed `r(seed)'
+		return scalar wbtype= `r(wbtype)'
+		return local  cluster `r(cluster)'
+		
+	}
+	else if ("`wboot1'"!="") {
+		return scalar reps = `reps'
+		return local seed 	   `rseed'
+		if ("`wbtype'"=="") {
+		    local wbtypen = 1
+		}
+		else if ("`wbtype'"=="mammen") {
+		    local wbtypen = 1
+		}
+		else if ("`wbtype'"=="rademacher") {
+		    local wbtypen = 2
+		}
+		else if ("`wbtype'"!="rademacher" & "`wbtype'"!="mammen") {
+		    display as error "invalid {bf:wbtype()}"
+			di as txt "{p 4 4 2}"                           
+			di as smcl as err ///
+			"{bf:wbtype()} should be one of {bf:mammen} or " ///
+			"{bf:rademacher}."      
+			di as smcl as err  "{p_end}"
+			exit 198 
+		}
+		return scalar wbtype = `wbtypen' 
+		if ("`cluster'"!="") {
+		    tempvar nclust wncl0
+			capture confirm numeric variable `cluster'
+			local rc = _rc
+			if (`rc') {
+				capture destring `rest', generate(`nclust')
+				local rc = _rc 
+				if (`rc') {
+					display in red "option {bf:cluster()} incorrectly specified"
+					exit 198
+				}
+				capture confirm numeric variable `nclust'
+				local rc = _rc 
+				if (`rc') {
+					display in red "option {bf:cluster()} incorrectly specified"
+					exit 198
+				}
+			}
+		}
+		return local cluster `cluster'
+	}
+end 
+
+
+program csdid_est, rclass
+	syntax [anything],  [   WBOOT(str) 				///
+							WBOOT1					///
+							reps(int 999) 			///
+							wbtype(str)  			/// Hidden option
+							rseed(str)				/// set seed
+							Level(int 95)			/// CI level
+							] [estore(name) esave(name) replace]
 	
 	local  `:char _dta[note11]'
 	
@@ -21,6 +112,7 @@ program csdid_stats, rclass
 		local  `:char _dta[note`i']'
 	}
 	
+	tempname cband
 	tempname b1 b2 b3 b4 b5 
 	tempname s1 s2 s3 s4 s5 
 	
@@ -33,15 +125,36 @@ program csdid_stats, rclass
 		exit 10
 	}
 	
+	//////////////////////////////////
+	_Parse_Wildboot, wboot(`wboot') `wboot1' reps(`reps') wbtype(`wbtype') rseed(`rseed') cluster(`cluster')
 	
+	if "`wboot'`wboot1'"!="" {
+	    local cluster 	`r(cluster)'
+		local ocluster 	`r(cluster)'
+		local seed 		`r(seed)'
+		if "`wbtype'"=="" local owbtype mammen
+		local owbtype   `wbtype' 
+		local wbtype 	`r(wbtype)'
+		local reps 		`r(reps)'
+		local vcetype 	WBoot
+	}
+	else {
+	    local wbtype 1
+	}
+	if "`seed'"!="" set seed `seed'
+	
+	//////////////////////////////////
+	*matrix `cband'=1
 	** New idea. Hacerlo todo desde makerif	
 	*mata:makerif("`rifgt'","`rifwt'","__wgt__","`b'","`v'","`cluster' ")
-
+	local ci = `level'/100
+	
 	noisily mata: makerif2("`rifgt'" , "`rifwt'","`agg'",  ///
 						    "`glvls'","`tlvls'", ///
 							"`b1'",  /// `b2' `b3' `b4' `b5' `b6'
 							"`s1'",  ///  `s2' `s3' `s4' `s5' `s6'
-							"`clvar' ", "`wboot' ")
+							"`clvar' ", "`vcetype' ", "`cband'", /// 
+									`ci', `reps', `wbtype')
 	tempname b V
 	matrix `b' = `b1'
 	matrix `V' = `s1'
@@ -53,8 +166,17 @@ program csdid_stats, rclass
 		matrix coleq   `V'=`eqname'
 		matrix rowname `V'=`colname'
 		matrix roweq   `V'=`eqname'
+		if "`wboot'"!="" {
+			matrix colname `cband'=b se t ll ul
+			matrix rowname `cband'=`colname'
+			matrix roweq   `cband'=`eqname'
+		}
 	}
 	
+	foreach i of local glvls {
+			local neqr = `neqr'+1			
+	}
+		
 	capture:est store `lastreg'	
 	ereturn clear
 	adde post `b' `V'
@@ -62,17 +184,50 @@ program csdid_stats, rclass
 	adde local cmd2	     estat
 	adde local cmdline   estat `agg'
 	adde local estat_cmd csdid_estat
+	adde local agg		 `agg'
+	adde scalar neqr =   `neqr'
+
+	if "`wboot'`wboot1'"!="" {
+		adde local vcetype "WBoot"
+		tempname ccband
+		matrix `ccband'=`cband'
+		adde matrix cband `ccband'
+	}
 	if "`estore'"!="" est store `estore'
 	if "`esave'" !="" est save  `esave', `replace'
-	_coef_table
+	
+	Display
 	matrix rtb=r(table)
-	capture:qui:est restore `lastreg'
+ 	capture:qui:est restore `lastreg'
+	
 	return matrix table = rtb
 	return matrix b `b1'
-	return matrix V `s1'
-
+	return matrix  V `s1'
+	return local agg `agg'
+  	if "`wboot'"!="" {
+		return matrix cband `cband'
+	}
+	return list
 end			
 
+ program define Display
+                syntax [, bmatrix(passthru) vmatrix(passthru) *]
+ 		 
+        _get_diopts diopts rest, `options'
+        local myopts `bmatrix' `vmatrix'        
+                if ("`rest'"!="") {
+                                display in red "option {bf:`rest'} not allowed"
+                                exit 198
+                }
+ 				if ("`e(vcetype)'"=="WBoot") {
+                    csdid_table, `diopts'
+                 }
+                else {
+                    _coef_table,  `diopts' `myopts' neq(`e(neqr)')
+                }
+                
+ 
+end
 
 mata:
 
@@ -92,7 +247,8 @@ mata:
 // Think how to save all elements.
 		
 void makerif2(string scalar rifgt_ , rifwt_ , agg, 
-				glvl_, tlvl_, bb_, ss_, clvar_, wboot_ ) {	
+				glvl_, tlvl_, bb_, ss_, clvar_, wboot , cband_,
+				real scalar ci, reps, wbtype ) {	
 					
     real matrix rifgt , rifwt, wgt, t0, glvl, tlvl
 	real scalar i,j,k,h
@@ -116,7 +272,7 @@ void makerif2(string scalar rifgt_ , rifwt_ , agg,
 	/////////////////////////////////////////
 	// Always make attgt, even if not shown. 
 	if (agg=="attgt") {
-		make_tbl( (rifgt,rifwt) ,bb,VV,clvar_,wboot_)
+		make_tbl( (rifgt,rifwt) ,bb,VV,clvar_,wboot, cband_, ci, reps, wbtype)
  	}
 	/////////////////////////////////////////
 	if (agg=="simple") {
@@ -141,7 +297,7 @@ void makerif2(string scalar rifgt_ , rifwt_ , agg,
 		ag_rif = rifgt[.,ind_gt]
 		ag_wt  = rifwt[.,ind_gt]
 		aux = aggte(ag_rif, ag_wt)
-		make_tbl(aux ,bb,VV,clvar_,wboot_)
+		make_tbl(aux ,bb,VV,clvar_,wboot, cband_,ci, reps, wbtype)
 		coleqnm = "ATT"
 	}
 	/////////////////////////////////////////
@@ -176,7 +332,7 @@ void makerif2(string scalar rifgt_ , rifwt_ , agg,
 		}
  
 		// get table elements		
-		make_tbl(aux ,bb,VV,clvar_,wboot_)
+		make_tbl(aux ,bb,VV,clvar_,wboot, cband_,ci, reps, wbtype)
 	}	
 	/////////////////////////////////////////
 	
@@ -215,7 +371,7 @@ void makerif2(string scalar rifgt_ , rifwt_ , agg,
  			}
 		}	
 		// get table elements		
-		make_tbl(aux ,bb,VV,clvar_,wboot_)
+		make_tbl(aux ,bb,VV,clvar_,wboot, cband_,ci, reps, wbtype)
 	}
 	
 	if (agg=="event") {
@@ -241,7 +397,7 @@ void makerif2(string scalar rifgt_ , rifwt_ , agg,
 						//ind_wt=ind_wt,i							
 						if (flag==0) {
 							if (evnt_lst[h]< 0) coleqnm=coleqnm+sprintf(" T%s" ,strofreal(evnt_lst[h]))
-							if (evnt_lst[h]==0) coleqnm=coleqnm+" T"
+							if (evnt_lst[h]==0) coleqnm=coleqnm+" T+0"
 							if (evnt_lst[h]> 0) coleqnm=coleqnm+sprintf(" T+%s",strofreal(evnt_lst[h]))
 						}
 						flag=1
@@ -252,46 +408,49 @@ void makerif2(string scalar rifgt_ , rifwt_ , agg,
 			if (flag==1) {
 				ag_rif = rifgt[.,ind_gt]
 				ag_wt  = rifwt[.,ind_gt]			
-				aux = aux, aggte(ag_rif, ag_wt)
+				aux = aux, aggte(ag_rif, ag_wt, )
 			}
 		}	
 		// get table elements		
-		make_tbl(aux ,bb,VV,clvar_,wboot_)
+		make_tbl(aux ,bb,VV,clvar_,wboot, cband_, ci, reps, wbtype)
 	}
 	
 	st_matrix(bb_,bb)
 	st_matrix(ss_,VV)
-	
+
 	if (agg!="attgt") {
 		stata("matrix colname "+bb_+" ="+coleqnm)
 		stata("matrix colname "+ss_+" ="+coleqnm)
 		stata("matrix rowname "+ss_+" ="+coleqnm)
+		if (wboot!=" ") {
+			stata("matrix colname "+cband_+" ="+"b se t ll ul")
+			stata("matrix rowname "+cband_+" ="+coleqnm)
+		}		
 	}
 	
 }
 
-void make_tbl(real matrix rif,bb,VV, clv , wboot ){
+void make_tbl(real matrix rif,bb,VV, clv , string  scalar wboot, cband_,
+				real scalar ci, reps, wbtype){
 	real matrix aux, nobs, clvar
 	real scalar cln
 	bb=mean(rif)
 	nobs=rows(rif)
 	// simple
+			
 	if ((clv==" ") & (wboot==" ")) {	
 		VV=quadcrossdev(rif,bb,rif,bb):/ (nobs^2) 
 	}
 	// cluster std
 	if ((clv!=" ") & (wboot==" ")) {
 		clvar=st_data(.,clv)
-		clusterse((rif:-bb),clvar,VV,cln)
+		clusterse((rif:-bb),clvar,VV,cln)		
 	}
 	real matrix cband
 	// wboot no cluster
-	if ((clv==" ") & (wboot!=" ")) {
-		mboot(rif,bb, VV, cband, clv)
-	}
-	// wboot with cluster
-	if ((clv!=" ") & (wboot!=" ")) {
-		mboot(rif,bb, VV, cband, clv)
+	if (wboot!=" ") {
+		mboot(rif,bb, VV, cband, clv, ci, reps, wbtype)
+		st_matrix(cband_,cband)
 	}
  } 
 
@@ -425,20 +584,24 @@ real vector qtp(real matrix y, real scalar p) {
 	return(qq)
 }
  
-void mboot(real matrix rif,mean_rif, vv, cband, string scalar clv) {
+void mboot(real matrix rif,mean_rif, vv, cband, string scalar clv,
+			real scalar ci, reps, wbtype) {
     //, real scalar reps, bwtype, ci 
     real matrix fr
-	real scalar reps, wbtype
-	reps   = 999
-	wbtype =   1
-	ci     = 0.95
+	///real scalar reps, wbtype
+	///reps   = 999
+	///wbtype =   1
+	///ci     = 0.95
 	real matrix ifse , ccb
 	// this gets the Bootstraped values
 	if (clv ==" ") {
 		fr=mboot_did(rif,mean_rif, reps, wbtype)
 		ifse = iqrse(fr)
 		// this gets Tvalue
-		cband=( mean_rif':-qtp(abs(fr :/ ifse),ci)':* ifse' ,  
+		cband=( mean_rif',
+				ifse',
+				mean_rif':/ifse',
+				mean_rif':-qtp(abs(fr :/ ifse),ci)':* ifse' ,  
 				mean_rif':+qtp(abs(fr :/ ifse),ci)':* ifse'   )
 	}
 	else {
@@ -448,8 +611,12 @@ void mboot(real matrix rif,mean_rif, vv, cband, string scalar clv) {
 		ifse = iqrse(fr)
 		// this gets Tvalue
 		
-		cband=( mean_rif':-qtp(abs(fr :/ ifse),ci)':* ifse' ,  
+		cband=( mean_rif',
+				ifse',
+				mean_rif':/ifse',
+				mean_rif':-qtp(abs(fr :/ ifse),ci)':* ifse' ,  
 				mean_rif':+qtp(abs(fr :/ ifse),ci)':* ifse'   )
+				
 	}
 	vv=quadcross(ifse,ifse):*I(rows(ifse))
 	//sqrt(variance(fr))
