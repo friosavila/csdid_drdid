@@ -29,7 +29,7 @@ d
 f csdid.ado
 f drdid.ado
 f csdid_estat.ado
-f csdid_stat.ado
+f csdid_stats.ado
 f csdid_table.ado
 f csdid_plot.ado
 f _het_did_gmm.ado
