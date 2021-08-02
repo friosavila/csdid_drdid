@@ -99,6 +99,7 @@ program csdid_est, rclass
 							wbtype(str)  			/// Hidden option
 							rseed(str)				/// set seed
 							Level(int 95)			/// CI level
+							window(str)             /// 
 							] [estore(name) esave(name) replace]
 	
 	local  `:char _dta[note11]'
@@ -154,7 +155,7 @@ program csdid_est, rclass
 							"`b1'",  /// `b2' `b3' `b4' `b5' `b6'
 							"`s1'",  ///  `s2' `s3' `s4' `s5' `s6'
 							"`clvar' ", "`vcetype' ", "`cband'", /// 
-									`ci', `reps', `wbtype')
+									`ci', `reps', `wbtype', "`window'")
 	tempname b V
 	matrix `b' = `b1'
 	matrix `V' = `s1'
@@ -231,16 +232,26 @@ end
 
 mata:
 
- vector event_list(real matrix glvl, tlvl){
- 	real matrix toreturn
+ vector event_list(real matrix glvl, tlvl,window){
+ 	real matrix toreturn, toreturn2
 	real scalar i,j
 	toreturn=J(1,0,.)
+	toreturn2=J(1,0,.)
 	for(i=1;i<=cols(glvl);i++) {
 		for(j=1;j<=cols(tlvl);j++) {
-			toreturn=toreturn,(tlvl[j]-glvl[i])
+			toreturn=toreturn,(tlvl[j] -glvl[i])
 		}
 	}
-	return(uniqrows(toreturn')')
+	toreturn=uniqrows(toreturn')'
+	 
+	if (cols(window)==0) return(toreturn)
+	else {
+	    for(i=1;i<=cols(toreturn);i++){
+		    if  ( (toreturn[i]>=window[1]) & (toreturn[i]<=window[2]) )    toreturn2=toreturn2,toreturn[i]
+		}
+		 
+		return(toreturn2)
+	}
  }
 // Next task. 
 // amek all elements separete RIF_siple RIF event, etc
@@ -248,13 +259,14 @@ mata:
 		
 void makerif2(string scalar rifgt_ , rifwt_ , agg, 
 				glvl_, tlvl_, bb_, ss_, clvar_, wboot , cband_,
-				real scalar ci, reps, wbtype ) {	
-					
+				real scalar ci, reps, wbtype, wnw ) {	
+	// wnw Window				
     real matrix rifgt , rifwt, wgt, t0, glvl, tlvl
-	real scalar i,j,k,h
+	real scalar i,j,k,h, wndw
 	rifgt	= st_data(.,rifgt_)
 	rifwt  	= st_data(.,rifwt_)
-	
+	wndw=strtoreal(tokens(wnw))
+
 	/// pg here is just a dummy
 	// stp1 all together?? No
 	//all=att_gt,pg
@@ -377,7 +389,7 @@ void makerif2(string scalar rifgt_ , rifwt_ , agg,
 	if (agg=="event") {
 		// i groups j time
 		real matrix evnt_lst
-		evnt_lst=event_list(glvl,tlvl)
+		evnt_lst=event_list(glvl,tlvl,wndw)
 		coleqnm=""
 		ind_wt=colsum(abs(rifgt))
 		aux =J(rows(rifwt),0,.)
@@ -390,7 +402,7 @@ void makerif2(string scalar rifgt_ , rifwt_ , agg,
 			for(i=1;i<=cols(glvl);i++) {
 				for(j=1;j<=cols(tlvl);j++) {
 					k++					
-					if ( ((glvl[i]+evnt_lst[h])==tlvl[j])  & (ind_wt[k]!=0) ) {	
+					if ( ((glvl[i]+evnt_lst[h])==tlvl[j])  & (ind_wt[k]!=0)  ) {	
 						//ag_rif=ag_rif, rifgt[.,k]
 						//ag_wt =ag_wt , rifwt[.,i]
 						ind_gt=ind_gt,k

@@ -295,9 +295,14 @@ Vanderbilt University{p_end}
 "Semiparametric Difference-in-Differences Estimators." 
 {it:The Review of Economic Studies} 72 (1): 1–19.{p_end}
 
+{phang2}Callaway, Brantly and Sant'Anna, Pedro H. C. 2020. 
+"Difference-in-Differences with multiple time periods." 
+{it:Journal of Econometrics}.{p_end}
+
 {phang2}Sant’Anna, Pedro H. C., and Jun Zhao. 2020. 
 "Doubly Robust Difference-in-Differences Estimators." 
 {it:Journal of Econometrics} 219 (1): 101–22.{p_end}
+
 
 {phang2}Rios-Avila, Fernando, 
 and Pedro H. C. Sant'Anna 2021.
@@ -308,13 +313,23 @@ and Pedro H. C. Sant'Anna 2021.
 {title:Aknowledgement}
 
 {pstd}This command was built using the DID command from R as benchmark, originally written by Pedro Sant'Anna and Brantly Callaway. 
-Many thanks to Pedro for helping understanding the inner workings on the estimator.{p_end}
+Many thanks to Pedro and Brantly Callaway for helping understanding the inner workings of the estimator, .{p_end}
 
-{pstd}Thanks to Enrique, who helped with the displaying set up{p_end}
+{pstd}Thanks to Enrique, who helped with the display set up{p_end}
+
+{pstd}If you use this package, please cite:{p_end}
+
+{phang2}Callaway, Brantly and Sant'Anna, Pedro H. C. 2020. 
+"Difference-in-Differences with multiple time periods." 
+{it:Journal of Econometrics}.{p_end}
+
+{phang2}Sant'Anna, Pedro H. C., and Jun Zhao. 2020. 
+"Doubly Robust Difference-in-Differences Estimators." 
+{it:Journal of Econometrics} 219 (1): 101–22.{p_end}
 
 {title:Also see}
 
 {p 7 14 2}
-Help:  {help drdid}, {help csrdid}, {help csdid postesimation}, {help xtdidregress} {p_end}
+Help:  {help drdid}, {help csdid}, {help csdid postestimation}, {help xtdidregress} {p_end}
 
 

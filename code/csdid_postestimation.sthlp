@@ -8,7 +8,7 @@ There are two commands that can be used as post estimation tools. These are {cmd
 Both can be used to obtain similar statistics. The first one, {cmd:csdid_estat}, works when using 
 {cmd: estat}, after the model estimation via {help csdid}. 
 
-The second one {csdid_stats} works in a similar way but when using the "saved" RIF file. It can be used to produced 
+The second one {cmd:csdid_stats} works in a similar way but when using the "saved" RIF file. It can be used to produced 
 wild Bootstrap SE.
 
 Below the syntax for both commands are discussed.
@@ -40,10 +40,11 @@ Aggregation subcommands.
 {synopt:{opt event}}Estimates the dynamic ATT's. ATT's are estimated using all period relative to the 
 period of first treatment, across all cohorts.{p_end}
 
-{synopt:{opt event, window(#1 #2)}}Same as above, but request only events between #1 and #2 to be estimated. 
-Not available when using csdid_stats.{p_end}
+{synopt:{opt event, window(#1 #2)}}Same as above, but request only events between #1 and #2 to be estimated. {p_end}
 
-{synopt:{opt attgt}}Produces the ATTGT's. Use when recovering results from rif file.{p_end}
+{synopt:{opt all}}Produces all aggregations. Not available with csdid_stats. And cannot be combined with estore() nor esave() {p_end}
+
+{synopt:{opt attgt}}Produces the ATTGT's. {p_end}
 
 {synopthdr:options}
 {synoptline}
@@ -60,6 +61,7 @@ Not available when using csdid_stats.{p_end}
 
 {phang}Using {cmd:csdid_estat} or {cmd: estat} {it:subcommand} always produces asymptotic standard errors, even if {help csdid} 
 was estimated requesting Wbootstrap standard errors. {p_end}
+{phang}To produce Wbootstrap Standard errors, for other aggregations, you need to use the saved RIF-file, and {cmd:csdid_stats} {p_end}
 
 {phang}{cmd:csdid_stats} can produce Wbootstrap standard if requested, using the following options:
 
@@ -84,9 +86,6 @@ avilable.{p_end}
 {cmd:csdid} also comes with its own command to produce simple plots for all aggregations. It automatically recognizes last 
 estimated results left by {cmd: csdid}, {cmd: csdid_estat} and {cmd: csdid_stats}, to produce the corresponding plots.
 
-{synopthdr}
-{synoptline}
-
 {marker syntax}{...}
 {title:Syntax}
 
@@ -97,7 +96,7 @@ estimated results left by {cmd: csdid}, {cmd: csdid_estat} and {cmd: csdid_stats
 
 {synopt:style(styleoption)} Allows you to change the style of the plot. The options are rspike (default), rarea, rcap and rbar.{p_end}
 
-{synopt:title(str)}Sets title for the constructed figure{p_end}
+{synopt:title(str)}Sets title for the constructed graph{p_end}
 
 {synopt:xtitle(str)}Sets title for horizontal axis{p_end}
 
@@ -105,23 +104,18 @@ estimated results left by {cmd: csdid}, {cmd: csdid_estat} and {cmd: csdid_stats
 
 {synopt:name(str)}Request storing a graph in memory under {it:name}{p_end}
  
-{synopt:group(#)}When using {cmd:csdid_plot} after {csdid} or after {cmd:csdid_stats attgt}, one can produce dynamic type
+{synopt:group(#)}When using {cmd:csdid_plot} after {cmd:csdid} or after {cmd:csdid_stats attgt}, one can produce dynamic type
 plots for each group/cohort. In that case, one needs to indicate which {it:group(#)} to plot.
 
 {marker remarks}{...}
 {title:Remarks}
 
 {pstd}
-When using panel data, the estimator does not require data to be strongly balance. However, when estimating each ATTGT,
-only observations that are balance within a specific 2x2 designed are used for the estimator. You will see a warning 
-if something like this is detected in the data.
-{p_end}
+The command {cmd:csdid_plot} is an easy to use command to plot different ATT aggregations, either across groups,
+across time, or dynamic effects, (event plot). It has, however, limited flexibility{p_end}
 {pstd}
-This approach is in contrast with the default approach in R's DID. When unbalanced data exists, the default is to 
-estimate the model using Repeated Crossection estimators. See the example below constrasting both approaches.
-{p_end}
-{pstd}
-Even if WBootstrap SE are requested, asymtotic SE are in e().
+If you want to further modify this figure, I suggest using the community contributed command {help addplot} by Benn Jan.
+If you do, pleace his software. See references section.
 
  
 {marker examples}{...}
@@ -130,45 +124,49 @@ Even if WBootstrap SE are requested, asymtotic SE are in e().
 {phang}
 {stata "use https://friosavila.github.io/playingwithstata/drdid/mpdta.dta, clear"}
 
-{pstd}Estimation of all ATTGT's using Doubly Robust IPW (DRIPW) estimation method {p_end}
+{pstd}Estimation of all ATTGT's using Doubly Robust IPW (DRIPW) estimation method. Saving RIF in disk {p_end}
 
 {phang}
-{stata csdid  lemp lpop , ivar(countyreal) time(year) gvar(first_treat) method(dripw)}
+{stata csdid  lemp lpop , ivar(countyreal) time(year) gvar(first_treat) method(dripw) saverif(_rif_) replace}
 
-{pstd}Estimation of all ATTGT's using Doubly Robust IPW (DRIPW) estimation method, with Wildbootstrap SE {p_end}
-
-{phang}
-{stata csdid  lemp lpop , ivar(countyreal) time(year) gvar(first_treat) method(dripw) wboot rseed(1)}
-
-{pstd}Repeated crosssection estimator with Wildbootstrap SE{p_end}
+{pstd}Estimation of all ATT aggregations{p_end}
 
 {phang}
-{stata csdid  lemp lpop , time(year) gvar(first_treat) method(dripw) wboot rseed(1)}
+{stata estat all}
 
-{pstd}Estimation of all Dynamic effects using Doubly Robust IPW (DRIPW) estimation method, with Wildbootstrap SE {p_end}
-
-{phang}
-{stata csdid  lemp lpop , ivar(countyreal) time(year) gvar(first_treat) method(dripw) wboot rseed(1) agg(event)}
-
-{pstd}Estimation of all Dynamic effects using Doubly Robust IPW (DRIPW) estimation method, with Wildbootstrap SE, 
-and not-yet treated observations as controls {p_end}
+{pstd}Estimation of all events between periods -2 to +2 {p_end}
 
 {phang}
-{stata csdid  lemp lpop , ivar(countyreal) time(year) gvar(first_treat) method(dripw) wboot rseed(1) agg(event) notyet}
+{stata estat event, window(-2 2)}
 
-{pstd}Estimation of ATTGT's assuming unbalance panel data, with panel estimators {p_end}
-
-{phang}
-{stata set seed 1}{p_end}
-{phang}
-{stata gen sample = runiform()<.9}{p_end}
-{phang}
-{stata csdid  lemp lpop  if sample==1, ivar(countyreal) time(year) gvar(first_treat) method(dripw) }{p_end}
-
-{pstd}Estimation of ATTGT's assuming unbalance panel data, with repeated crossection estimators, but clustered SE{p_end}
+{pstd}Producing a simple Plot for last results. Two different styles{p_end}
 
 {phang}
-{stata csdid  lemp lpop  if sample==1, cluster(countyreal) time(year) gvar(first_treat) method(dripw) }
+{stata csdid_plot}
+
+{phang}
+{stata estat event, window(-2 2)}
+
+{phang}
+{stata csdid_plot, style(rarea)}
+
+{pstd}Dynamic effects for group treated in 2006{p_end}
+
+{phang}
+{stata csdid  lemp lpop , ivar(countyreal) time(year) gvar(first_treat) method(dripw) }
+
+{phang}
+{stata csdid_plot, group(2006)}
+
+{pstd}Estimation of aggregations using RIF file. Using Asymptotic Standard errors and WBootstrap Standard errors{p_end}
+
+{phang}{stata use _rif_, clear}
+
+{phang}
+{stata csdid_stats event}
+
+{phang}
+{stata csdid_stats event, wboot}
 
 {marker authors}{...}
 {title:Authors}
@@ -199,13 +197,19 @@ and Pedro H. C. Sant'Anna 2021.
  “CSDID: Difference-in-Differences with Multiple periods.” 
 {p_end}
 
+{phang2}
+ Jann, B. (2014). addplot: Stata module to add twoway plot objects to an existing twoway graph. Available from 
+        http://ideas.repec.org/c/boc/bocode/s457917.html.
+{p_end}
+		
 {marker aknowledgement}{...}
 {title:Aknowledgement}
 
-{pstd}This command was built using the DID command from R as benchmark, originally written by Pedro Sant'Anna and Brantly Callaway. 
-Many thanks to Pedro for helping understanding the inner workings on the estimator.{p_end}
+{pstd}This command was built using the DID command from R as benchmark, originally written by Pedro Sant'Anna and Brantly Callaway. {p_end}
 
-{pstd}Thanks to Enrique, who helped with the displaying set up{p_end}
+{pstd}Many thanks to Pedro for helping understanding the inner workings on the estimator.{p_end}
+
+{pstd}Thanks also to Enrique, who helped with the display set up, plus other questions that popup while working on this{p_end}
 
 {title:Also see}
 

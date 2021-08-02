@@ -609,7 +609,7 @@ program csdid_r, sortpreserve eclass
 		
 	Display
 	display "Control: `e(control_group)'" 
-	display _n "See Callaway and Sant'Anna (2021) for details"
+	display _n "See Callaway and Sant'Anna (2020) for details"
 end 
 
 /// This can be used for aggregation. Creates the matrixes we need.

@@ -1,4 +1,5 @@
 *! Ver 1.6 Change in check for 2x2 data. And updated site!
+* added correction to teffects for ALL
 * Ver 1.5   New output, with panel GMM estimators. Also WB standard errors with cluster
 * Ver 1.38  Adding Cluster Stantandard errors
 * version 1.37 2jun2021 Add extra messages of 2x2 balance. Checks that you indeed have panel data
@@ -1371,7 +1372,7 @@ program define drdid_sipwra, eclass
 		local scl = r(mean)
 		gen double `sy'= `__dy__'/`scl'		
 		qui:teffects ipwra (`sy' `xvar') (`trt' `xvar', logit)	///
-			if `touse' & `tmt'==0 [iw = `weight'] , atet `clopt'
+			if `touse' & `tmt'==0 [iw = `weight'] , atet `clopt' iter(5)
 		tempname b V ciband ncl aux
 		matrix `aux'=e(b)*`scl'
 		matrix `b'=`aux'[1,1]

@@ -186,7 +186,6 @@ See {cmd:ereturn list} after running the command.{p_end}
 {marker authors}{...}
 {title:Authors}
 
-
 {pstd}
 Fernando Rios-Avila{break}
 Levy Economics Institute of Bard College{break}
@@ -228,10 +227,14 @@ Many thanks to Pedro for helping understanding the inner workings on the estimat
 
 {pstd}Also thank you to Miklos Koren, for helping setting up the original helpfile and github repository {p_end}
 
+{pstd}If you use this package, please cite:{p_end}
+
+{phang2}Sant'Anna, Pedro H. C., and Jun Zhao. 2020. 
+"Doubly Robust Difference-in-Differences Estimators." 
+{it:Journal of Econometrics} 219 (1): 101–22.{p_end}
+
 
 {title:Also see}
-
-{p 4 14 2}
 
 {p 7 14 2}
 Help:  {help csdid}, {help didregress}, {help xtdidregress} {p_end}
