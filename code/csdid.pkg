@@ -18,7 +18,7 @@ d KW: treatment effects
 d KW: difference in differences
 d KW: att
 d
-d Requires: Stata version ??
+d Requires: Stata version 14
 d
 d Required packages:
 d 	drdid
@@ -29,12 +29,14 @@ d
 f csdid.ado
 f drdid.ado
 f csdid_estat.ado
+f csdid_stats.ado
+f csdid_table.ado
+f csdid_plot.ado
+f _het_did_gmm.ado
+f _gmm_regipw.ado
+f _gmm_dripw.ado
 
-f example.do
-f test.do
 f ../data/lalonde.dta
 f ../data/mpdta.dta
 f ../LICENSE
-
-f csdid.sthlp
 
