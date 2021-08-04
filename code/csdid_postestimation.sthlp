@@ -8,10 +8,10 @@ There are two commands that can be used as post estimation tools. These are {cmd
 Both can be used to obtain similar statistics. The first one, {cmd:csdid_estat}, works when using 
 {cmd: estat}, after the model estimation via {help csdid}. 
 
-The second one {cmd:csdid_stats} works in a similar way but when using the "saved" RIF file. It can be used to produced 
+The second one {cmd:csdid_stats} works similarly but when using the "saved" RIF file. It can be used to produce 
 wild Bootstrap SE.
 
-Below the syntax for both commands are discussed.
+Below the syntax for both commands is discussed.
 
 {marker syntax}{...}
 {title:Syntax}
@@ -37,8 +37,8 @@ Aggregation subcommands.
 
 {synopt:{opt calendar}}Estimates the ATT for each period, across all groups or cohorts {p_end}
 
-{synopt:{opt event}}Estimates the dynamic ATT's. ATT's are estimated using all period relative to the 
-period of first treatment, across all cohorts.{p_end}
+{synopt:{opt event}}Estimates the dynamic ATT's. ATT's are estimated using all periods relative to the 
+period of the first treatment, across all cohorts.{p_end}
 
 {synopt:{opt event, window(#1 #2)}}Same as above, but request only events between #1 and #2 to be estimated. {p_end}
 
@@ -71,7 +71,7 @@ was estimated requesting Wbootstrap standard errors. {p_end}
 {synopt:wboot}Request Estimation of Standard errors using a multiplicative WildBootstrap procedure.
 The default uses 999 repetitions using mammen approach. {p_end}
 
-{synopt:reps(#)}Specifies the number of repetitions to be used for the Estimaton of the WBoot SE. Default is 999 {p_end}
+{synopt:reps(#)}Specifies the number of repetitions to be used for the Estimation of the WBoot SE. Default is 999 {p_end}
 
 {synopt:wtype(type)}Specifies the type of Wildbootstrap procedure. The default is "mammen", but "rademacher" is also 
 avilable.{p_end}
@@ -111,11 +111,11 @@ plots for each group/cohort. In that case, one needs to indicate which {it:group
 {title:Remarks}
 
 {pstd}
-The command {cmd:csdid_plot} is an easy to use command to plot different ATT aggregations, either across groups,
+The command {cmd:csdid_plot} is an easy-to-use command to plot different ATT aggregations, either across groups,
 across time, or dynamic effects, (event plot). It has, however, limited flexibility{p_end}
 {pstd}
 If you want to further modify this figure, I suggest using the community contributed command {help addplot} by Benn Jan.
-If you do, pleace his software. See references section.
+If you do, please cite his software. See references section.
 
  
 {marker examples}{...}
@@ -181,6 +181,9 @@ friosavi@levy.org
 {pstd}Pedro H. C. Sant'Anna {break}
 Vanderbilt University{p_end}
 
+{pstd}Brantly Callaway {break}
+University of Georgia{p_end}
+
 {marker references}{...}
 {title:References}
 
@@ -207,13 +210,12 @@ and Pedro H. C. Sant'Anna 2021.
 
 {pstd}This command was built using the DID command from R as benchmark, originally written by Pedro Sant'Anna and Brantly Callaway. {p_end}
 
-{pstd}Many thanks to Pedro for helping understanding the inner workings on the estimator.{p_end}
+{pstd}Many thanks to Pedro for helping me understand the inner workings of the estimator.{p_end}
 
-{pstd}Thanks also to Enrique, who helped with the display set up, plus other questions that popup while working on this{p_end}
+{pstd}Thanks also to Enrique, who helped with the display set up, plus other questions that pop up while working on this{p_end}
 
 {title:Also see}
 
 {p 7 14 2}
 Help:  {help drdid}, {help csrdid}, {help csdid postesimation}, {help xtdidregress} {p_end}
-
 

@@ -87,7 +87,7 @@ inverse probability weighting and ordinary least squares{p_end}
 {synopt:ipw}Abadie (2005) inverse probability weighting DiD estimator{p_end}
 
 {synopt:rc1}In combination with the methods {cmd drimp} and {cmd dripw}, this option request the doubly robust
-but not locally efficient repeated crossection estimtors. Not available when using panel data. 
+but not locally efficient repeated crossection estimators. Not available when using panel data. 
 
 
 {synoptline}
@@ -103,7 +103,7 @@ but not locally efficient repeated crossection estimtors. Not available when usi
 {synopt:wboot}Request Estimation of Standard errors using a multiplicative WildBootstrap procedure.
 The default uses 999 repetitions using mammen approach. {p_end}
 
-{synopt:reps(#)}Specifies the number of repetitions to be used for the Estimaton of the WBoot SE. Default is 999 {p_end}
+{synopt:reps(#)}Specifies the number of repetitions to be used for the Estimation of the WBoot SE. Default is 999 {p_end}
 
 {synopt:wtype(type)}Specifies the type of Wildbootstrap procedure. The default is "mammen", but "rademacher" is also 
 avilable.{p_end}
@@ -140,7 +140,7 @@ or SE after the model has been estimated. {p_end}
 
 {synopt:simple}Estimates the ATT for all groups across all periods {p_end}
 
-{synopt:group}Estimates the ATT for each group or cohort, over all periods {p_end}
+{synopt:group}Estimates the ATT for each group or cohort, overall periods {p_end}
 
 {synopt:calendar}Estimates the ATT for each period, across all groups or cohorts {p_end}
 
@@ -159,20 +159,20 @@ period first treated, across all cohorts.{p_end}
 that determines all relevant designs and aggregates them. {p_end}
  
 {pstd}As in -drdid-, the underlying assumption is that all covariates are time constant. When using panel data, 
-even if covariates are time varying, only the base-period values are used for the estimation. 
+even if covariates are time-varying, only the base-period values are used for the estimation. 
 {p_end}
  
 {pstd}
-When using crossection data, while all characteristics can be consider time varying, the underlying assumption is that 
+When using crossection data, while all characteristics can be considered time-varying, the underlying assumption is that 
 within treated and untreated group, characteristics are stationary (time constant). In other words, 
-be careful of controling for characteristics that are either time constant (e.g. sex or race), or for 
+be careful of controlling for characteristics that are either time constant (e.g. sex or race), or for 
 pretreatment characteristics.
 {p_end}
  
 {pstd}
 The intuition behind Callaway and Sant'Anna (2020) estimator is that in order to obtain consistent estimators for ATT's
-one should only use never-treated or not-yet treated units as controls. Otherwise, under heterogenous treatment effects, 
-the parallel trends assumption will be violated, and the estimations of the effects could be severily biased.
+one should only use never-treated or not-yet treated units as controls. Otherwise, under heterogeneous treatment effects, 
+the parallel trends assumption will be violated, and the estimations of the effects could be severely biased.
 {p_end}
 
 {pstd}
@@ -197,13 +197,13 @@ For ATT's after the treatment took place use G-1 as the base period (pre-treatme
 
 {pstd}
 Because the estimator attempts to estimate all ATTGT's for all groups across all periods, the implementation of this estimator
-for crossection data with long time spans and many treated groups may not be feasible. For example, using 30 periods, with 20 potential 
+for cross-section data with long time spans and many treated groups may not be feasible. For example, using 30 periods, with 20 potential 
 groups would require the estimation of 600 separate regressions, and the creation of at least the same number of new variables
-containing the RIF's for all ATTGT's, rapidily consuming the memory resources of commonly used computers. 
+containing the RIF's for all ATTGT's, rapidly consuming the memory resources of commonly used computers. 
 {p_end}
 
 {pstd}
-The best advice on this cases is refine the treatment groups or cohorts, because not all of them may be relevant for your analysis. 
+The best advice on these cases is to refine the treatment groups or cohorts, because not all of them may be relevant for your analysis. 
 Additionally, you may not need ALL periods, requiring only few periods before the first treatment year.
 
 
@@ -211,16 +211,15 @@ Additionally, you may not need ALL periods, requiring only few periods before th
 {title:Remarks}
 
 {pstd}
-When using panel data, the estimator does not require data to be strongly balance. However, when estimating each ATTGT,
-only observations that are balance within a specific 2x2 designed are used for the estimator. You will see a warning 
-if something like this is detected in the data.
+When using panel data, the estimator does not require data to be strongly balanced. However, when estimating each ATTGT,
+only observations that are balanced within a specific 2x2 designed are used for the estimator. You will see a warning if something like this is detected in the data.
 {p_end}
 {pstd}
 This approach is in contrast with the default approach in R's DID. When unbalanced data exists, the default is to 
-estimate the model using Repeated Crossection estimators. See the example below constrasting both approaches.
+estimate the model using Repeated Crossection estimators. See the example below contrasting both approaches.
 {p_end}
 {pstd}
-Even if WBootstrap SE are requested, asymtotic SE are in e().
+Even if WBootstrap SE are requested, asymptotic SE are in e().
 
 {marker post_estimation}{...}
 {title:Post Estimaton}
@@ -270,7 +269,7 @@ and not-yet treated observations as controls {p_end}
 {phang}
 {stata csdid  lemp lpop  if sample==1, ivar(countyreal) time(year) gvar(first_treat) method(dripw) }{p_end}
 
-{pstd}Estimation of ATTGT's assuming unbalance panel data, with repeated crossection estimators, but clustered SE{p_end}
+{pstd}Estimation of ATTGT's assuming unbalance panel data, with repeated crosssection estimators, but clustered SE{p_end}
 
 {phang}
 {stata csdid  lemp lpop  if sample==1, cluster(countyreal) time(year) gvar(first_treat) method(dripw) }
@@ -305,7 +304,8 @@ Vanderbilt University{p_end}
 
 
 {phang2}Rios-Avila, Fernando, 
-and Pedro H. C. Sant'Anna 2021.
+Pedro H. C. Sant'Anna, 
+and Brantly Callaway, 2021.
  “CSDID: Difference-in-Differences with Multiple periods.” 
 {p_end}
 
@@ -313,13 +313,13 @@ and Pedro H. C. Sant'Anna 2021.
 {title:Aknowledgement}
 
 {pstd}This command was built using the DID command from R as benchmark, originally written by Pedro Sant'Anna and Brantly Callaway. 
-Many thanks to Pedro and Brantly Callaway for helping understanding the inner workings of the estimator, .{p_end}
+Many thanks to Pedro and Brantly Callaway for helping to understand the inner workings of the estimator, .{p_end}
 
 {pstd}Thanks to Enrique, who helped with the display set up{p_end}
 
 {pstd}If you use this package, please cite:{p_end}
 
-{phang2}Callaway, Brantly and Sant'Anna, Pedro H. C. 2020. 
+{phang2}Callaway, Brantly, and Sant'Anna, Pedro H. C. 2020. 
 "Difference-in-Differences with multiple time periods." 
 {it:Journal of Econometrics}.{p_end}
 
@@ -331,5 +331,4 @@ Many thanks to Pedro and Brantly Callaway for helping understanding the inner wo
 
 {p 7 14 2}
 Help:  {help drdid}, {help csdid}, {help csdid postestimation}, {help xtdidregress} {p_end}
-
 
