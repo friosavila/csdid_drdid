@@ -287,6 +287,9 @@ friosavi@levy.org
 {pstd}Pedro H. C. Sant'Anna {break}
 Vanderbilt University{p_end}
 
+{pstd}Brantly Callaway {break}
+University of Georgia{p_end}
+
 {marker references}{...}
 {title:References}
 
