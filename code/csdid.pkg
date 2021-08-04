@@ -14,7 +14,8 @@ d  of Treatment effects.
 d  CSDID at its core uses DRDID for the estimation of all 2x2 DID designs to estimate all relevant 
 d  ATTGT's (Average treatment effects of the treated for group G at time T). Post estimation 
 d  commands can be used to obtain important aggregations.
-d  CSDID can be used with panel data and repeated cross-section. 
+d  CSDID can be used with panel data and repeated cross-section.
+d  This package installs both CSDID and DRDID 
 d
 d    KW: Differences in Differences
 d    KW: DID
@@ -36,5 +37,9 @@ f csdid_estat.ado
 f csdid_stats.ado
 f csdid_table.ado
 f csdid_plot.ado
-
+f drdid.ado
+f _gmm_dripw.ado
+f _gmm_regipw.ado
+f _het_did_gmm.ado
+f drdid.sthlp
 
