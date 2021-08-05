@@ -74,10 +74,10 @@ To specify a particular syntax, one should use the option {cmd: method({it:metho
 
 {synopthdr}
 {synoptline}
-{synopt:drimp (default)}Sant’Anna and Zhao (2020) Improved doubly robust DiD estimator based on 
+{synopt:drimp (default)}Sant'Anna and Zhao (2020) Improved doubly robust DiD estimator based on 
 inverse probability of tilting and weighted least squares. {p_end}
 
-{synopt:dripw}Sant’Anna and Zhao (2020) doubly robust DiD estimator based on stabilized 
+{synopt:dripw}Sant'Anna and Zhao (2020) doubly robust DiD estimator based on stabilized 
 inverse probability weighting and ordinary least squares{p_end}
 
 {synopt:reg}Outcome regression DiD estimator based on ordinary least squares {p_end}
@@ -87,7 +87,7 @@ inverse probability weighting and ordinary least squares{p_end}
 {synopt:ipw}Abadie (2005) inverse probability weighting DiD estimator{p_end}
 
 {synopt:rc1}In combination with the methods {cmd drimp} and {cmd dripw}, this option request the doubly robust
-but not locally efficient repeated crossection estimators. Not available when using panel data. 
+but not locally efficient repeated crosssection estimators. Not available when using panel data. 
 
 
 {synoptline}
@@ -163,7 +163,7 @@ even if covariates are time-varying, only the base-period values are used for th
 {p_end}
  
 {pstd}
-When using crossection data, while all characteristics can be considered time-varying, the underlying assumption is that 
+When using crosssection data, while all characteristics can be considered time-varying, the underlying assumption is that 
 within treated and untreated group, characteristics are stationary (time constant). In other words, 
 be careful of controlling for characteristics that are either time constant (e.g. sex or race), or for 
 pretreatment characteristics.
@@ -225,7 +225,7 @@ Even if WBootstrap SE are requested, asymptotic SE are in e().
 {title:Post Estimaton}
 
 {pstd}
-{cmd: csdid} offers three post estimation utilities. See {help csdid_estat}, {help csdid_stats} and {help csdid_plot} for more details.
+{cmd: csdid} offers three post estimation utilities. See {help csdid_postestimation} for more details.
 {p_end}
 
 {marker examples}{...}
@@ -301,7 +301,7 @@ University of Georgia{p_end}
 "Difference-in-Differences with multiple time periods." 
 {it:Journal of Econometrics}.{p_end}
 
-{phang2}Sant’Anna, Pedro H. C., and Jun Zhao. 2020. 
+{phang2}Sant'Anna, Pedro H. C., and Jun Zhao. 2020. 
 "Doubly Robust Difference-in-Differences Estimators." 
 {it:Journal of Econometrics} 219 (1): 101–22.{p_end}
 
@@ -309,7 +309,7 @@ University of Georgia{p_end}
 {phang2}Rios-Avila, Fernando, 
 Pedro H. C. Sant'Anna, 
 and Brantly Callaway, 2021.
- “CSDID: Difference-in-Differences with Multiple periods.” 
+ "CSDID: Difference-in-Differences with Multiple periods." 
 {p_end}
 
 {marker aknowledgement}{...}
