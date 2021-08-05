@@ -701,6 +701,7 @@ void makerif2(string scalar rifgt_ , rifwt_ , wgt_, agg,
 		st_matrix("b_attgt",bb)
 		st_matrix("V_attgt",VV)
 		make_tbl( (rifgt,rifwt) ,bb,VV,clvar_, wboot_ ,VV1 , cband, ci, reps, wbtype)
+		
 	}
 	
 	//if (wboot_!=" ") make_tbl( (rifgt,rifwt) ,bb,VV,clvar_, wboot_ , VV1)
@@ -882,6 +883,7 @@ void make_tbl(real matrix rif,bb,VV, clv , wboot ,VV1 , string scalar cband_,
 	real scalar cln
 	bb=mean(rif)
 	nobs=rows(rif)
+ 
 	// simple
 	if ((clv==" ") & (wboot==" ")) {	
 		VV=quadcrossdev(rif,bb,rif,bb):/ (nobs^2) 
@@ -1034,7 +1036,7 @@ real matrix iqrse(real matrix y) {
 	return(iqrs)
 }
 
-real vector qtp(real matrix y, real scalar p) {
+real vector qtp2(real matrix y, real scalar p) {
     real scalar k, i, q
 	real matrix yy, qq
 	qq=J(1,0,.)
@@ -1048,6 +1050,20 @@ real vector qtp(real matrix y, real scalar p) {
 	return(qq)
 }
 
+real vector qtp(real matrix y, real scalar p) {
+    real scalar k, i, q
+	real matrix yy, qq
+	qq=J(1,0,.)
+	k = cols(y)
+	y=rowmax(y)
+	for(i=1;i<=k;i++){
+		yy=sort(y,1)
+		q=ceil((rows(yy)+1)*p)    
+		qq=qq,yy[q,]
+	}
+    
+	return(qq)
+}
 void mboot(real matrix rif,mean_rif, vv, cband, string scalar clv, real matrix vv1, 
 			real scalar ci, reps, wbtype) {
     
