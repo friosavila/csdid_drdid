@@ -1036,7 +1036,7 @@ real matrix iqrse(real matrix y) {
 	return(iqrs)
 }
 
-real vector qtp2(real matrix y, real scalar p) {
+real vector qtp(real matrix y, real scalar p) {
     real scalar k, i, q
 	real matrix yy, qq
 	qq=J(1,0,.)
@@ -1050,7 +1050,7 @@ real vector qtp2(real matrix y, real scalar p) {
 	return(qq)
 }
 
-real vector qtp(real matrix y, real scalar p) {
+real vector qtp2(real matrix y, real scalar p) {
     real scalar k, i, q
 	real matrix yy, qq
 	qq=J(1,0,.)
