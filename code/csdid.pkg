@@ -31,15 +31,17 @@ d Distribution-Date: 20210801
 d
 
 f csdid.ado
-f csdid.sthlp
-f csdid_postestimation.sthlp
 f csdid_estat.ado
 f csdid_stats.ado
 f csdid_table.ado
 f csdid_plot.ado
+f csdid.sthlp
+f csdid_postestimation.sthlp
 f drdid.ado
+f drdid_predict.ado
+f drdid_display.ado
+f drdid.sthlp
 f _gmm_dripw.ado
 f _gmm_regipw.ado
+f _gmm_repeated.ado
 f _het_did_gmm.ado
-f drdid.sthlp
-

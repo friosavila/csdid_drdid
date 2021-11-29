@@ -1,4 +1,8 @@
-*! Ver 1.6 Change in check for 2x2 data. And updated site!
+*! Ver 1.63 added Dryrun
+* Ver 1.63 Bug with option all and RC estimator
+* Ver 1.62 Added level
+* Ver 1.61 Change sample for drimp
+* Ver 1.6 Change in check for 2x2 data. And updated site!
 * added correction to teffects for ALL
 * Ver 1.5   New output, with panel GMM estimators. Also WB standard errors with cluster
 * Ver 1.38  Adding Cluster Stantandard errors
@@ -119,13 +123,16 @@ program define drdid_wh, eclass sortpreserve byable(recall)
 							pscore(string)				///
 							csdid						///
 							binit(string)				///
+							dryrun						///
 							*							///
 							]  
+    * so it returns Nothing								
+	if "`dryrun'"!="" error 1111
 	
 	_get_diopts diopts other, `options' 
-	quietly capture Display, `diopts' `other' 	
+	quietly capture Display, `diopts' `other' level(`level')	
 	if _rc==198 {
-		Display, `diopts' `other'       
+		Display, `diopts' `other'  level(`level')     
 	}
 
 
@@ -142,9 +149,18 @@ program define drdid_wh, eclass sortpreserve byable(recall)
 		local reps = r(reps)
 		local wbtype = r(wbtype)
 	}
-		
-	if "`cluster'"==""  local cluster "`r(cluster)'"
 	
+	 ** Verify 2x2 data
+	tempname isok
+	mata:is_2x2("`time'","`treatment'","`touse'","`isok'")
+	if scalar(`isok')==0 {
+	    display in red "You do not have a 2x2 design."
+		error 555
+	}	
+			
+			
+	if "`cluster'"==""  local cluster "`r(cluster)'"
+		
 	if "`cluster'"!=""  {
 		tempvar clvar
 		qui:egen double `clvar' = group(`cluster') if `touse'
@@ -215,13 +231,7 @@ program define drdid_wh, eclass sortpreserve byable(recall)
 	** just in case for xvar not be empty
 	*local xvar `xvar'
 	tempvar vals vals2 vals3
- 	** Verify 2x2 data
-	tempname isok
-	mata:is_2x2("`time'","`treatment'","`touse'","`isok'")
-	if scalar(`isok')==0 {
-	    display in red "You do not have a 2x2 design."
-		error 555
-	}	 
+ 
 	
 	tempvar tmt
 	qui:egen byte `tmt'=group(`time') if `touse'
@@ -261,24 +271,36 @@ program define drdid_wh, eclass sortpreserve byable(recall)
 			ereturn local semethod `semethod'
 			ereturn local clustvar `ocluster'
 			ereturn local seed     `rseed'
-			Display, bmatrix(e(b)) vmatrix(e(V)) `diopts' 
+			if "`ivar'"!="" ereturn local datatype "panel"
+			else            ereturn local datatype "rcs"
+			Display, bmatrix(e(b)) vmatrix(e(V)) `diopts' level(`level')
 			exit 
 		}
 		else {
 			tempvar touse2
 			tempname b V 
 			
+			if ("`ivar'"=="") {
+				local repeated repeated
+				if ("`estimator'"=="sipwra") {
+					display as error ///
+					"{bf:ipwra} not allowed with {bf:gmm} and repeated"	///
+					" cross-sectional data"	
+					exit 198
+				}
+			}
+			
 			if "`weight'" != "" {
 				local wgtgmm [`weight' `exp']
 			}
 			quietly generate byte `touse2' = . if `touse'
-			local cond "(`touse' & `tmt')"
-	
-			_het_did_gmm `y' `xvar' if `cond' `wgtgmm', 		///
+
+			_het_did_gmm `y' `xvar' if `touse' `wgtgmm', 				///
 						  estimator(`estimator') groupvar(`ivar')		///
-						  psvars(`xvar') treatvar(`treatment')			///
+						  psvars(`xvar') treatvar(`trt')				///
 						  timevar(`time') vce(`vce') touse2(`touse2')	///
-						  t0(`tmt') pscore(`pscore')
+						  t0(`tmt') pscore(`pscore') `repeated'			///
+						  treatname(`treatment')
 
 			matrix `b' = r(b)
 			matrix `V' = r(V)
@@ -296,7 +318,7 @@ program define drdid_wh, eclass sortpreserve byable(recall)
 			
 			if ("`vce'"=="cluster") {
 				ereturn scalar N_clust = `N_clust'
-				ereturn local clustvar "`oclustvar'"
+				ereturn local clustvar "`clustvar'"
 			}
 			ereturn local vce "`vce'"
 			ereturn local vcetype "`vcetype'"
@@ -306,10 +328,14 @@ program define drdid_wh, eclass sortpreserve byable(recall)
 			Display, bmatrix(e(b)) vmatrix(e(V)) `diopts' 
 			exit 
 		}
+	
+	
 	}
 	 
 	if "`estimator'"=="all" {
-	** DR 		
+	** DR
+	tempvar ttouse
+	    qui:clonevar `ttouse'=`touse'
 		tempname bb VV
 		qui:drdid_dripw , `01'
  		matrix `bb' = nullmat(`bb')\e(b)
@@ -318,7 +344,8 @@ program define drdid_wh, eclass sortpreserve byable(recall)
 		**capture drop `stub'att_dripw
 		*ren `stub'att  `stub'att_dripw
 		if "`ivar'"=="" {
-		    qui:drdid_dripw , `01' rc1 
+			qui:capture gen byte `touse'=`ttouse'
+			qui:drdid_dripw , `01' rc1 
 			matrix `bb' = nullmat(`bb')\e(b)
 			matrix `VV' = nullmat(`VV')\e(V)
 			local clname `clname' ATET:dripw_rc1
@@ -326,6 +353,7 @@ program define drdid_wh, eclass sortpreserve byable(recall)
 			*clonevar `stub'att_dripwrc=`stub'att
 		}
 	** DRIMP	
+		qui:capture gen byte `touse'=`ttouse'
  	    qui:drdid_imp , `01'
 		matrix `bb' = nullmat(`bb')\e(b)
 		matrix `VV' = nullmat(`VV')\e(V)
@@ -334,6 +362,7 @@ program define drdid_wh, eclass sortpreserve byable(recall)
 		*ren `stub'att  `stub'att_drimp
 		
 		if "`ivar'"=="" {
+			qui:capture gen byte `touse'=`ttouse'
 		    qui:drdid_imp , `01' rc1 
 			matrix `bb' = nullmat(`bb')\e(b)
 			matrix `VV' = nullmat(`VV')\e(V)
@@ -342,6 +371,7 @@ program define drdid_wh, eclass sortpreserve byable(recall)
 			*ren `stub'att  `stub'att_drimprc
 		}
 	** REG
+		qui:capture gen byte `touse'=`ttouse'
 		qui:drdid_reg , `01'
 		matrix `bb' = nullmat(`bb')\e(b)
 		matrix `VV' = nullmat(`VV')\e(V)
@@ -349,6 +379,7 @@ program define drdid_wh, eclass sortpreserve byable(recall)
 		**capture drop `stub'att_reg
 		*ren `stub'att  `stub'att_reg
 	** TRAD_IPW	
+		qui:capture gen byte `touse'=`ttouse'
 	    qui:drdid_aipw , `01'
 		matrix `bb' = nullmat(`bb')\e(b)
 		matrix `VV' = nullmat(`VV')\e(V)
@@ -356,6 +387,7 @@ program define drdid_wh, eclass sortpreserve byable(recall)
 		**capture drop `stub'att_ipw
 		*ren `stub'att  `stub'att_ipw
 	** STD IPW	
+		qui:capture gen byte `touse'=`ttouse'
 		qui:drdid_stdipw , `01'
 		matrix `bb' = nullmat(`bb')\e(b)
 		matrix `VV' = nullmat(`VV')\e(V)
@@ -363,6 +395,7 @@ program define drdid_wh, eclass sortpreserve byable(recall)
 		*ren `stub'att  `stub'att_stdipw
 		local clname `clname' ATET:stdipw
 		if "`ivar'"!="" {
+			qui:capture gen byte `touse'=`ttouse'
 			qui:drdid_sipwra , `01'
 			matrix `bb' = nullmat(`bb')\e(b)
 			matrix `VV' = nullmat(`VV')\e(V)
@@ -382,7 +415,7 @@ program define drdid_wh, eclass sortpreserve byable(recall)
 	ereturn local method         `drimp'`dripw'`reg'`stdipw'`aipw'`ipwra'`all'
 	ereturn hidden local method2 `drimp'`dripw'`reg'`stdipw'`aipw'`ipwra'`all'	
 
-    Display, bmatrix(e(b)) vmatrix(e(V)) `diopts' 
+    Display, bmatrix(e(b)) vmatrix(e(V)) `diopts' level(`level')
 end
 
 program define _Vce_Parse, rclass
@@ -845,7 +878,8 @@ program define drdid_aipw, eclass
 			** _delta
 			bysort `touse' `ivar' (`tmt'):gen double `__dy__'=`y'[2]-`y'[1] if `touse' 
 			gen byte `touse2'=`touse'*(`tmt'==0)
-		    tempname b V ciband ncl
+  			replace `touse'=0 if `__dy__'==.
+ 		    tempname b V ciband ncl
 			mata:ipw_abadie_panel("`__dy__'","`xvar' ","`xb'","`psb' ","`psV' ","`psxb'","`trt'","`tmt'","`touse2'","`att'","`weight'")
 			local ci = `level'/100
 			mata:make_tbl("`att'","`cluster' ", "`touse2'", "`b'","`V'","`ciband' ","`ncl'","`wboot' ", `reps', `wbtype', `ci')
@@ -853,9 +887,9 @@ program define drdid_aipw, eclass
 			matrix colname `b'= ATET:r1vs0.`treatvar'
 			matrix colname `V'= ATET:r1vs0.`treatvar' 
 			matrix rowname `V'= ATET:r1vs0.`treatvar'
-			quietly count if `touse2'
+			quietly count if `touse'
 			local N = r(N)
-			ereturn post `b' `V', buildfvinfo esample(`touse2') obs(`N')
+			ereturn post `b' `V', buildfvinfo esample(`touse') obs(`N')
 			local att1    =`=_b[r1vs0.`treatvar']'
 			local attvar1 =`=_se[r1vs0.`treatvar']'^2
 			ereturn scalar att1    =`att1'
@@ -972,6 +1006,7 @@ program define drdid_dripw, eclass
 			*capture drop `stub'att
 			*gen double `stub'att=. 
 			gen byte `touse2'=`touse'*(`tmt'==0)
+			replace `touse'=0 if `__dy__'==.
 			mata:drdid_panel("`__dy__'","`xvar' ","`xb'","`psb'","`psV'","`psxb'","`trt'","`tmt'","`touse2'","`att'","`weight'")
 			**replace `stub'att=. if `tmt'==1
 			local ci = `level'/100
@@ -980,9 +1015,9 @@ program define drdid_dripw, eclass
 			matrix colname `b'= ATET:r1vs0.`treatvar'
 			matrix colname `V'= ATET:r1vs0.`treatvar'
 			matrix rowname `V'= ATET:r1vs0.`treatvar'
-			quietly count if `touse2'
+			quietly count if `touse'
 			local N = r(N)
-			ereturn post `b' `V', buildfvinfo esample(`touse2') obs(`N')
+			ereturn post `b' `V', buildfvinfo esample(`touse') obs(`N')
 			local att1    =`=_b[r1vs0.`treatvar']'
 			local attvar1 =`=_se[r1vs0.`treatvar']'^2
 			ereturn scalar att1    =`att1'
@@ -1127,6 +1162,7 @@ program define drdid_reg, eclass
 			matrix `regb'=e(b)
 			matrix `regV'=e(V)
 			gen byte `touse2'=`touse'*(`tmt'==0)
+			replace `touse'=0 if `__dy__'==.
 			mata:reg_panel("`__dy__'", "`xvar' ", "`xb' " , "`trt'",	///
 				"`tmt'" , "`touse2'","`att'","`weight'") 
 			local ci = `level'/100
@@ -1134,9 +1170,9 @@ program define drdid_reg, eclass
 			matrix colname `b' = ATET:r1vs0.`treatvar'
 			matrix colname `V' = ATET:r1vs0.`treatvar'
 			matrix rowname `V' = ATET:r1vs0.`treatvar'
-			quietly count if `touse2'
+			quietly count if `touse'
 			local N = r(N)
-			ereturn post `b' `V', buildfvinfo esample(`touse2') obs(`N')
+			ereturn post `b' `V', buildfvinfo esample(`touse') obs(`N')
 			local att1    =`=_b[r1vs0.`treatvar']'
 			local attvar1 =`=_se[r1vs0.`treatvar']'^2
 			ereturn scalar att1    =`att1'
@@ -1253,6 +1289,7 @@ program define drdid_stdipw, eclass
 			*`isily' reg `__dy__' `xvar' if `trt'==0 
 			*gen double `stub'att=.		
 			gen byte `touse2'=`touse'*(`tmt'==0)
+			replace `touse'=0 if `__dy__'==.
 			mata:std_ipw_panel("`__dy__'","`xvar' ","`xb'",		///
 				"`psb'","`psV'","`psxb'","`trt'","`tmt'","`touse2'",	///
 				"`att'","`weight'")
@@ -1264,9 +1301,9 @@ program define drdid_stdipw, eclass
 
 		}
 		*display "DiD with stabilized IPW" _n "{p}Abadie (2005) inverse probability weighting DiD estimator with stabilized weights{p_end}" 
-		quietly count if `touse2'
+		quietly count if `touse'
 		local N = r(N)
-		ereturn post `b' `V', buildfvinfo esample(`touse2') obs(`N')
+		ereturn post `b' `V', buildfvinfo esample(`touse') obs(`N')
 		*ereturn display
 		local att1    =`=_b[r1vs0.`treatvar']'
 		local attvar1 =`=_se[r1vs0.`treatvar']'^2
@@ -1361,8 +1398,7 @@ program define drdid_sipwra, eclass
 	}
    if "`ivar'"=="" {
        display "Estimator not implemented for RC"
-	   exit
-	   error 
+	   exit 198 
    }
    else {
 	qui {
@@ -1400,7 +1436,7 @@ program define drdid_sipwra, eclass
 end
  
 **#drdid_dript
-program define drdid_imp, eclass sortpreserve
+program define drdid_imp, eclass  
 	syntax, [					///
 			touse(str)			///
 			trt(str)			///
@@ -1433,10 +1469,12 @@ program define drdid_imp, eclass sortpreserve
 	tempname iptb iptV regb regV b V ciband ncl
 
 	qui:gen double `att'=.
+	
 	if "`ivar'"!="" {
 		qui {
-			`isily'  mlexp (`trt'*{xb:`xvar' _cons}-(`trt'==0)*exp({xb:}))	///
-				if `touse' & `tmt'==0 [iw = `weight'], vce(robust) from(`binit')
+
+			`isily'  mlexp (`trt'*{xb:`xvar' _cons}-(`trt'==0)*exp({xb:}))  ///
+					if `touse' & `tmt'==0 [iw = `weight'], vce(robust) from(`binit')
 
 			matrix `iptb'=e(b)
 			matrix `iptV'=e(V)
@@ -1457,7 +1495,7 @@ program define drdid_imp, eclass sortpreserve
 			qui:predict double `xb'
 			tempvar touse2
 			gen byte `touse2'=`touse'*(`tmt'==0)
-			
+			replace `touse'=0 if `__dy__'==.
 			mata:drdid_imp_panel("`__dy__'","`xvar' ","`xb'",	///
 				"`psb'","`psV'","`psxb'","`trt'","`tmt'","`touse2'",	///
 				"`att'","`weight'")	
@@ -1470,15 +1508,15 @@ program define drdid_imp, eclass sortpreserve
  			matrix colname `b'= ATET:r1vs0.`treatvar'
 			matrix colname `V'= ATET:r1vs0.`treatvar'
 			matrix rowname `V'= ATET:r1vs0.`treatvar'
-			quietly count if `touse2'
+			quietly count if `touse'
 			local N = r(N)
-			ereturn post `b' `V', buildfvinfo esample(`touse2') obs(`N')
+			ereturn post `b' `V', buildfvinfo esample(`touse') obs(`N')
 			local att1    =`=_b[r1vs0.`treatvar']'
 			local attvar1 =`=_se[r1vs0.`treatvar']'^2
 			ereturn scalar att1    =`att1'
 			ereturn scalar attvar1 =`attvar1'
-			ereturn matrix ipwb `iptb'
-			ereturn matrix ipwV `iptV'
+			ereturn matrix iptb `iptb'
+			ereturn matrix iptV `iptV'
 			ereturn matrix regb `regb'
 			ereturn matrix regV `regV'
 			ereturn local cmd drdid
@@ -1496,9 +1534,11 @@ program define drdid_imp, eclass sortpreserve
 	**# for Crossection estimator				
 
 		qui {
-			`isily'  mlexp (`trt'*{xb:`xvar' _cons}-(`trt'==0)*exp({xb:}))	///
-				if `touse' & `tmt'==0 [iw = `weight'], vce(robust)			
-			
+
+			`isily'  mlexp (`trt'*{xb:`xvar' _cons}-(`trt'==0)*exp({xb:}))  ///
+					if `touse' & `tmt'==0 [iw = `weight'], vce(robust) from(`binit')
+
+			//& `tmt'==0 
 			tempname iptb iptV regb00 regV00 regb01 regV01 regb10	///
 					 regV10 regb11 regV11
 			tempvar psxb w1 w0 y01 y00 y10 y11

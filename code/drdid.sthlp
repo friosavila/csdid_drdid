@@ -35,13 +35,13 @@ the propensity score estimator, or both. {p_end}
 has a panel structure, and will apply panel estimators. When no variable is declared the command assumes data are
  repeated crosssection (RC), and applies RC estimators. {p_end}
 {synopt:{opt t:ime}} Variable to identify time. e.g., {it:year}. Periods do not need to be consecutive, but
-it is expected to be strictly positive. {p_end}
+it is expected to be strictly positive. It is also recommended periods have regular gaps. {p_end}
 {synopt:{opt tr:eatment}} Categorical variable identifying the control and treated group. It does not 
 required to be coded as 0 and 1. However, lower value is assumed to be the control group, whereas
  the higher one is the treated group, given the effective sample. 
 e.g., 1 control 3 treated group. {p_end}
 
-{syntab:{bf: Estimation Method}:  Panel Estimators}
+{syntab:{bf: Estimation Method}:  }
 
 {synopthdr}
 {synoptline}
@@ -81,24 +81,29 @@ but not locally efficient repeated crossection estimtors. Not available when usi
 {synopthdr}
 {synoptline}
 
-{synopt:wboot}Request Estimation of Standard errors using a multiplicative WildBootstrap procedure.
+{synopt:wboot}Request estimation of Standard errors using a multiplicative WildBootstrap procedure.
 The default uses 999 repetitions using mammen approach{p_end}
-{synopt:reps(#)}Specifies the number of repetitions to be used for the Estimaton of the WBoot SE. Default is 999 {p_end}
-{synopt:wtype(type)}Specifies the type of Wildbootstrap procedure. The default is "mammen", but "rademacher" is also 
+
+{synopt:wboot(options)}Request estimation of Standard errors using a multiplicative WildBootstrap procedure.
+allowing to change default options. {p_end}
+{synopt:  reps(#)}Specifies the number of repetitions to be used for the Estimaton of the WBoot SE. Default is 999 {p_end}
+{synopt:  wtype(type)}Specifies the type of Wildbootstrap procedure. The default is "mammen", but "rademacher" is also 
 avilable.{p_end}
+
 {synopt:rseed(#)}Specifies the seed for the WB procedure. Use for replication purposes.{p_end}
 
-{synopt:gmm}Request the estimation of the DID effect using generalized method of moments. 
-Available only for Panel data estimators{p_end}
+{synopt:gmm}Request the estimation of the DID ATT's using generalized method of moments. {p_end}
 
 {synopt:vce(opt)}When the model is estimated via {help gmm}, one can also request alternative Standard Errors. 
-See -gmm- for details.{p_end}
+See -gmm- for details. The default Standard errors should the the same as default standard errors. {p_end}
 
 {synopt:cluster(clust var)}Request the estimation of Clustered Standard errors. This option is for asymptotic Standard errors,
 Wbootstrap Standard errors, and GMM.{p_end}
 {synopt:}Remark 1. When Panel estimators are used, asymptotic and Wbootstrap Standard errors are already clustered at the panel level.
 When using cluster, one is effectively requesting a two-way cluster estimation.{p_end}
 {synopt:}Remark 2. When Panel estimators are used, The panel id (ivar) should be nested within cluster{p_end}
+
+{synopt:level(#)}Sets the confidence levels for the estimation of confidence intervals. Default is 95 {p_end}
 
 {syntab:{bf: Other Options}}
 
@@ -129,28 +134,44 @@ variable contains the Recentered Influence function associated with the DID ATT.
  is correctly specified.  {p_end}
  
 {pstd}
-It is also imporant to consider that the Panel data estimators assume that you are using time invariant variables.
+It is also important to consider that the Panel data estimators assume that you are using time invariant variables.
 Even if those variables are time variant, only the pretreatment values are used for the outcome model estimator or
 the probability model estimation.
 {p_end}
 
 {pstd}
-When repeated crosssection data is used, controls across time are possible, since each period uses different units, 
-the underlying assumption is that control variables should be time constant. Sant'Anna and Zhao (2020) describes this 
+When repeated crosssection data is used, it is possible to use controls that vary across time are. 
+The underlying assumption is that control variables should be time constant. Sant'Anna and Zhao (2020) describes this 
 as stationarity assumption. 
 {p_end}
 
 {pstd}
-It is possible to add time varying covariates by using the change on the covariate as control, in addition to the 
+It is possible to add time varying covariates with panel data estimators, adding covariate changes as controls, in addition to the 
 pretreatment covariates. However, unless the controls are strictly exogenous (strong assumption), this may produce 
 inconsistent results, because the changes that would otherwise be capture in the ATT would be absorbed by the varying covariates. 
+
+{marker Postestimation}{...}
+{title:Postestimation}
+
+{pstd}It is possible to show the contents of the intermediate results, using the command:
+
+{phang2}{cmd: drdid_display}, bmatrix(name) vmatrix(name) {p_end}
+
+{pstd}For all estimation metods except -ipwra-, it is also possible request the generation
+of the IPW weights, or the propensity score using the following command:{p_end}
+
+{phang2}{cmd: drdid_predict} {it:newvarname}, [weight pscore] {p_end}
+
 
 {marker remarks}{...}
 {title:Remarks}
 
 {pstd}In addition to the ATT and standard errors, the command also returns, 
 as part of {cmd:e()}, the coefficients and variance covariance matrixes associated with all intermediate sets. 
-See {cmd:ereturn list} after running the command.{p_end}
+See {cmd:ereturn list} after running the command. {p_end}
+
+
+
 
 {marker examples}{...}
 {title:Examples}

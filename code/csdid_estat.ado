@@ -1,3 +1,5 @@
+*! v1.52 FRA add window to cevent. Censored averages.
+*! v1.51 FRA add from to simple calendar and group
 *! v1.5 FRA Change from nlcom to mata
 *! v1.2 FRA Adds the options for simple and calendar so it doesnt depend on consecutive years
 * also adds the option window
@@ -14,7 +16,7 @@ version 14
 		    display "Test will be based on asymptotic VCoV"
 			display "{p}If you want aggregations based on WB, use option saverif() ad csdid_stats{p_end}"
 		}
-		if inlist("`key'","attgt","simple","pretrend","group","calendar","event","all") {
+		if inlist("`key'","attgt","simple","pretrend","group","calendar","event","cevent","all") {
 			csdid_`key'  `rest'
 			
 		}
@@ -46,8 +48,8 @@ program clrreturn, rclass
 end
 
 program csdid_attgt,  rclass sortpreserve
-	syntax, [estore(name) esave(name) replace plot * ]
- 	display "ATT GT with WBOOT SE (alternative method)"
+	syntax, [estore(name) esave(name) replace plot post * ]
+ 	*display "ATT GT with WBOOT SE (alternative method)"
 	tempname lastreg
 	tempvar b V table
 	matrix `b' = e(b_attgt)
@@ -65,7 +67,8 @@ program csdid_attgt,  rclass sortpreserve
 	if "`esave'" !="" est save  `esave', `replace'
 	_coef_table
 	matrix rtb=r(table)
-	qui:est restore `lastreg'
+	if "`post'"=="" qui:est restore `lastreg'
+	
 	return matrix table = rtb
 	return matrix b = r_b_
 	return matrix V = r_V_
@@ -75,9 +78,9 @@ end
 	
  
 program csdid_simple,  rclass sortpreserve
-	syntax, [estore(name) esave(name) replace ]
+	syntax, [estore(name) esave(name) replace from(int 0) post *]
  	display "Average Treatment Effect on Treated"
-	mata:csdid_simple("e(b_attgt)","e(V_attgt)","`e(glev)'","`e(tlev)'")
+	mata:csdid_simple("e(b_attgt)","e(V_attgt)","`e(glev)'","`e(tlev)'", `from')
 	tempname lastreg
 	tempvar b V table
 	matrix `b' = r_b_
@@ -95,7 +98,9 @@ program csdid_simple,  rclass sortpreserve
 	if "`esave'" !="" est save  `esave', `replace'
 	_coef_table
 	matrix rtb=r(table)
-	qui:est restore `lastreg'
+
+	if "`post'"=="" qui:est restore `lastreg'
+
 	return matrix table = rtb
 	return matrix b = r_b_
 	return matrix V = r_V_
@@ -103,9 +108,9 @@ program csdid_simple,  rclass sortpreserve
 end
 
 program csdid_group, sortpreserve rclass
-	syntax, [estore(name) esave(name) replace plot *]
+	syntax, [estore(name) esave(name) replace plot from(int 0) post *]
   	display "ATT by group"
-	mata:csdid_group("e(b_attgt)","e(V_attgt)","`e(glev)'","`e(tlev)'")
+	mata:csdid_group("e(b_attgt)","e(V_attgt)","`e(glev)'","`e(tlev)'",`from')
 	tempname lastreg
 	tempvar b V table
 	matrix `b' = r_b_
@@ -121,7 +126,9 @@ program csdid_group, sortpreserve rclass
 	if "`esave'" !="" est save  `esave', `replace'
 	_coef_table
 	matrix rtb=r(table)
-	qui:est restore `lastreg'
+
+	if "`post'"=="" qui:est restore `lastreg'
+
 	return matrix table = rtb
 	return matrix b = r_b_
 	return matrix V = r_V_
@@ -130,9 +137,9 @@ program csdid_group, sortpreserve rclass
 end
 
 program csdid_calendar, sortpreserve rclass
-	syntax, [estore(name) esave(name) replace plot * ]
+	syntax, [estore(name) esave(name) replace plot from(int 0) post * ]
   	display "ATT by Calendar Period"
-	mata:csdid_calendar("e(b_attgt)","e(V_attgt)","`e(glev)'","`e(tlev)'")
+	mata:csdid_calendar("e(b_attgt)","e(V_attgt)","`e(glev)'","`e(tlev)'",`from')
 	tempname lastreg
 	tempvar b V table
 	matrix `b' = r_b_
@@ -148,7 +155,9 @@ program csdid_calendar, sortpreserve rclass
 	if "`esave'" !="" est save  `esave', `replace'
 	_coef_table
 	matrix rtb=r(table)
-	qui:est restore `lastreg'
+	
+	if "`post'"=="" qui:est restore `lastreg'
+
 	return matrix table = rtb
 	return matrix b = r_b_
 	return matrix V = r_V_
@@ -158,7 +167,7 @@ end
  
 program csdid_event, sortpreserve rclass
 	syntax, [estore(name) esave(name) replace window(str) balance(int 0) ///
-			 plot * ]
+			 post * ]
 			 
    	display "ATT by Periods Before and After treatment"
 	display "Event Study:Dynamic effects"
@@ -183,7 +192,9 @@ program csdid_event, sortpreserve rclass
 	if "`esave'" !="" est save  `esave', `replace'
 	_coef_table
 	matrix rtb=r(table)
-	qui:est restore `lastreg'
+
+	if "`post'"=="" qui:est restore `lastreg'
+
 	return matrix table = rtb
 	return matrix b = r_b_
 	return matrix V = r_V_
@@ -191,6 +202,43 @@ program csdid_event, sortpreserve rclass
 	return local cmd estat
  
 end 
+
+
+program csdid_cevent, sortpreserve rclass
+	syntax, [estore(name) esave(name) replace window(str) balance(int 0) ///
+			 post * ]
+	
+	numlist "`window'", min(2) max(2) sort integer
+	local window `r(numlist)'
+   	display "ATT for events between `window'"
+	display "Event Study:Aggregate effects"
+	
+	mata:csdid_cevent("e(b_attgt)","e(V_attgt)","`e(glev)'","`e(tlev)'","`window'", `balance')
+	tempname lastreg
+	tempvar b V table
+	matrix `b' = r_b_
+	matrix `V' = r_V_
+	matrix colname `b' = ATTC
+	matrix colname `V' = ATTC
+	matrix rowname `V' = ATTC
+	capture:est store `lastreg'	
+	ereturn clear
+	adde post `b' `V'
+	adde local cmd 	   estat
+	adde local cmdline estat cevent `0'
+	adde local agg     cevent
+	if "`estore'"!="" est store `estore'
+	if "`esave'" !="" est save  `esave', `replace'
+	_coef_table
+	matrix rtb=r(table)
+
+	if "`post'"=="" qui:est restore `lastreg'
+
+	return matrix table = rtb
+	return matrix b = r_b_
+	return matrix V = r_V_
+	return local agg  cevent
+end
 
 
 program adde, eclass
@@ -206,7 +254,7 @@ program adds, sclass
 end
 
 mata
-void csdid_group(string scalar bb_, vv_, gl_, tl_){
+void csdid_group(string scalar bb_, vv_, gl_, tl_, real scalar from){
     real matrix b, v , ii, jj, glvl, tlvl
 	
 	glvl = strtoreal(tokens(gl_));tlvl = strtoreal(tokens(tl_))	
@@ -230,7 +278,7 @@ void csdid_group(string scalar bb_, vv_, gl_, tl_){
 		flag = 0
 		for(j=1;j<=cols(tlvl);j++) {
 			k++
-			if ((glvl[i]<=tlvl[j]) & (b[k]!=0) ) {
+			if ( (tlvl[j]-glvl[i]>=from)  & (b[k]!=0) ) {
 				//ag_rif=ag_rif, rifgt[.,k]
 				ii[k]=1
 				flag=1
@@ -262,7 +310,7 @@ void csdid_group(string scalar bb_, vv_, gl_, tl_){
 }
  
  
-void csdid_calendar(string scalar bb_, vv_, gl_, tl_){
+void csdid_calendar(string scalar bb_, vv_, gl_, tl_, real scalar from){
     real matrix b, v , ii, jj, glvl, tlvl
 	glvl = strtoreal(tokens(gl_));tlvl = strtoreal(tokens(tl_))	
 	b=st_matrix(bb_);v=st_matrix(vv_)
@@ -288,7 +336,7 @@ void csdid_calendar(string scalar bb_, vv_, gl_, tl_){
 		for(i=1;i<=cols(glvl);i++) {
 			for(j=1;j<=cols(tlvl);j++) {
 				k++
-				if ((glvl[i]<=tlvl[j]) & (tlvl[h]==tlvl[j]) & (b[k]!=0) ){
+				if ((tlvl[j]-glvl[i]>=from) & (tlvl[h]==tlvl[j]) & (b[k]!=0) ){
 					ii[k] = 1
 					if (flag==0) coleqnm=coleqnm+sprintf(" T%s",strofreal(tlvl[h]))
 					flag=1
@@ -339,7 +387,7 @@ void csdid_pretrend(string scalar bb_, vv_, gl_, tl_){
 }
 
  
-void csdid_simple(string scalar bb_, vv_, gl_, tl_) {
+void csdid_simple(string scalar bb_, vv_, gl_, tl_, real scalar from) {
 	real matrix b, v , ii, jj, glvl, tlvl
 	glvl = strtoreal(tokens(gl_));tlvl = strtoreal(tokens(tl_))	
 	b=st_matrix(bb_);v=st_matrix(vv_)
@@ -357,7 +405,7 @@ void csdid_simple(string scalar bb_, vv_, gl_, tl_) {
 	for(i=1;i<=cols(glvl);i++) {
 		for(j=1;j<=cols(tlvl);j++) {
 			k++
-			if ((glvl[i]<=tlvl[j]) & (b[k]!=0)) {
+			if ((tlvl[j]-glvl[i]>=from) & (b[k]!=0) ) {
 				ii[k] = 1
 				//jj=jj,i
 			}
@@ -418,7 +466,7 @@ vector ptreat(real matrix glvl, tlvl, b){
 	wndw=strtoreal(tokens(wnw))
 	 
 	// Find Balance
-	trtp=ptreat(glvl,tlvl, b )
+	///trtp=ptreat(glvl,tlvl, b )
 	
 	real matrix evnt_lst
 	evnt_lst=event_list(glvl,tlvl,wndw)
@@ -449,9 +497,9 @@ vector ptreat(real matrix glvl, tlvl, b){
 					//ag_wt =ag_wt , rifwt[.,i]
 					ii[k] = 1						
 					if (flag==0) {
-						if (evnt_lst[h]< 0) coleqnm=coleqnm+sprintf(" T%s" ,strofreal(evnt_lst[h]))
-						if (evnt_lst[h]==0) coleqnm=coleqnm+" T+0"
-						if (evnt_lst[h]> 0) coleqnm=coleqnm+sprintf(" T+%s",strofreal(evnt_lst[h]))
+						if (evnt_lst[h]< 0) coleqnm=coleqnm+sprintf(" Tm%s" ,strofreal(abs(evnt_lst[h])))
+						if (evnt_lst[h]==0) coleqnm=coleqnm+" Tp0"
+						if (evnt_lst[h]> 0) coleqnm=coleqnm+sprintf(" Tp%s",strofreal(abs(evnt_lst[h])))
 					}
 					flag=1
 				}
@@ -475,10 +523,54 @@ vector ptreat(real matrix glvl, tlvl, b){
 	stata("matrix colname r_V_ ="+coleqnm)
 	stata("matrix rowname r_V_ ="+coleqnm)
 	}
+ 
+ 
+  void csdid_cevent(string scalar  bb_, vv_, gl_, tl_, wnw, real scalar bal ){
+    real matrix b, v , ii, jj, glvl, tlvl, wndw, trtp
+	real scalar from, tto
+	
+	glvl = strtoreal(tokens(gl_));tlvl = strtoreal(tokens(tl_))	
+	b=st_matrix(bb_);v=st_matrix(vv_)
+	wndw=strtoreal(tokens(wnw))
+	from=wndw[1];tto=wndw[2]
+	 
+	// Find Balance
+	/// trtp=ptreat(glvl,tlvl, b )
+	
+	real scalar k, i, j
+	k=0
+	real matrix br, bw
+	ii=(1..2*(cols(glvl)*cols(tlvl)))
+	br=b[1,(1..(cols(ii)/2))]
+	bw=b[1,((cols(ii)/2+1)..cols(ii))]
+	ii=(1..(cols(glvl)*cols(tlvl)))*0
+  
+		for(i=1;i<=cols(glvl);i++) {
+		for(j=1;j<=cols(tlvl);j++) {
+			k++
+			if ((tlvl[j]-glvl[i]<=tto) &  (tlvl[j]-glvl[i]>=from) & (b[k]!=0) ) {
+				ii[k] = 1
+				//jj=jj,i
+			}
+		}
+	}
+	 
+ 	real matrix r1, r2
+	r1 = (bw :* ii):/rowsum(bw :* ii)
+	r2 = (br :* ii):/rowsum(bw :* ii):-rowsum((br:*ii):*(bw:*ii)):/(rowsum(bw :* ii):^2)
+	r2 = r2:*ii
+ 	real matrix bbb, vvv
+ 
+	bbb=rowsum(br :* bw:*ii):/rowsum(bw :* ii)
+ 	vvv=makesymmetric((r1,r2)*v*(r1,r2)')
+ 
+	
+	st_matrix("r_b_",bbb')
+	st_matrix("r_V_",vvv)
+	}
 end
+ 
 
- 
- 
 program stuff
 ************ Estat
 ** estat Pretrend

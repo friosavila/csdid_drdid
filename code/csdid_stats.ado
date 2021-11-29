@@ -1,4 +1,8 @@
-*! v1 Command for estimating estats from RIF file
+*! v1.55 FRA allows for more periods
+* v1.53 FRA add window to cevent. Censored averages.
+* v1.52 FRA changes how data is stored for csdid estat
+* v1.51 FRA add from to simple calendar and group
+* v1 Command for estimating estats from RIF file
 program adde, eclass
         ereturn `0'
 end
@@ -25,6 +29,34 @@ program csdid_stats,
  
 		
 		csdid_est `0'
+end 
+
+program _Parse2_wboot, rclass
+	syntax, [reps(integer 999) wbtype(str) rseed(str) cluster(str)]
+	return scalar reps    = `reps'
+	return local seed 	   `rseed'
+	return local  cluster  `cluster'
+	
+	if ("`wbtype'"=="") {
+		    return scalar wbtype = 1
+
+		}
+	else if ("`wbtype'"=="mammen") {
+		    return scalar wbtype = 1
+		}
+	else if ("`wbtype'"=="rademacher") {
+		    return scalar wbtype = 2
+		}
+	else if ("`wbtype'"!="rademacher" & "`wbtype'"!="mammen") {
+		    display as error "invalid {bf:wbtype()}"
+			di as txt "{p 4 4 2}"                           
+			di as smcl as err ///
+			"{bf:wbtype()} should be one of {bf:mammen} or " ///
+			"{bf:rademacher}."      
+			di as smcl as err  "{p_end}"
+			exit 198 
+		}	
+		
 end 
 
 program _Parse_Wildboot, rclass 
@@ -95,12 +127,15 @@ end
 program csdid_est, rclass
 	syntax [anything],  [   WBOOT(str) 				///
 							WBOOT1					///
-							reps(int 999) 			///
-							wbtype(str)  			/// Hidden option
+							*reps(int 999) 			///
+							*wbtype(str)  			/// Hidden option
 							rseed(str)				/// set seed
 							Level(int 95)			/// CI level
+							*cluster(str) 			///
 							window(str)             /// 
-							] [estore(name) esave(name) replace]
+							pointwise    			///
+							post                    ///
+							from(int 0) ] [estore(name) esave(name) replace]
 	
 	local  `:char _dta[note11]'
 	
@@ -113,6 +148,39 @@ program csdid_est, rclass
 		local  `:char _dta[note`i']'
 	}
 	
+** checking Notes 7 and 8
+	if "`:word 1 of `rifgt''"=="see_char" {
+		local mk "`:word 2 of `rifgt''"
+		local rifgt
+		forvalues i = 1/`mk'{
+			local rifgt `rifgt' `:char _dta[rifgt`i']'
+		}
+	}
+	
+	if "`:word 1 of `rifwt''"=="see_char" {
+		local mk "`:word 2 of `rifwt''"
+		local rifwt
+		forvalues i = 1/`mk'{
+			local rifwt `rifwt' `:char _dta[rifwt`i']'
+		}
+	}
+	
+	if "`:word 1 of `colname''"=="see_char" {
+		local mk "`:word 2 of `colname''"
+		local colname
+		forvalues i = 1/`mk'{
+			local colname `colname' `:char _dta[colname`i']'
+		}
+	}
+	
+	if "`:word 1 of `eqname''"=="see_char" {
+		local mk "`:word 2 of `eqname''"
+		local eqname
+		forvalues i = 1/`mk'{
+			local eqname `eqname' `:char _dta[eqname`i']'
+		}
+	}
+	
 	tempname cband
 	tempname b1 b2 b3 b4 b5 
 	tempname s1 s2 s3 s4 s5 
@@ -121,9 +189,14 @@ program csdid_est, rclass
 	
 	if "`agg'"=="" local agg event
 	
-	if !inlist("`agg'","attgt","simple","group","calendar","event")  {
+	if !inlist("`agg'","attgt","simple","group","calendar","event","cevent")  {
 		display "Option `agg' not allowed"
 		exit 10
+	}
+	
+	if "`agg'"=="cevent" {
+	    numlist "`window'", min(2) max(2) sort integer
+		local window `r(numlist)'
 	}
 	
 	//////////////////////////////////
@@ -138,6 +211,8 @@ program csdid_est, rclass
 		local wbtype 	`r(wbtype)'
 		local reps 		`r(reps)'
 		local vcetype 	WBoot
+		if "`pointwise'"==""	local citype  "uniform"
+		else 					local citype  "pointwise"
 	}
 	else {
 	    local wbtype 1
@@ -148,14 +223,27 @@ program csdid_est, rclass
 	*matrix `cband'=1
 	** New idea. Hacerlo todo desde makerif	
 	*mata:makerif("`rifgt'","`rifwt'","__wgt__","`b'","`v'","`cluster' ")
+	
+	/*if "`cluster'"!= "" {
+		local clvar `cluster'
+	}*/
+	
+	
 	local ci = `level'/100
 	
+	local citp=1
+	if "`wboot'`wboot1'"!="" {
+		local wboot wboot
+		if "`citype'"=="uniform"   local citp = 1
+		if "`citype'"=="pointwise" local citp = 2
+	}
+		
 	noisily mata: makerif2("`rifgt'" , "`rifwt'","`agg'",  ///
 						    "`glvls'","`tlvls'", ///
 							"`b1'",  /// `b2' `b3' `b4' `b5' `b6'
 							"`s1'",  ///  `s2' `s3' `s4' `s5' `s6'
 							"`clvar' ", "`vcetype' ", "`cband'", /// 
-									`ci', `reps', `wbtype', "`window'")
+									`ci', `reps', `wbtype', "`window'", `citp', `from')
 	tempname b V
 	matrix `b' = `b1'
 	matrix `V' = `s1'
@@ -180,6 +268,9 @@ program csdid_est, rclass
 		
 	capture:est store `lastreg'	
 	ereturn clear
+	tempname bb vv
+	matrix `bb' = `b'
+	matrix `vv' = `V'
 	adde post `b' `V'
 	adde local cmd 	     csdid
 	adde local cmd2	     estat
@@ -187,6 +278,13 @@ program csdid_est, rclass
 	adde local estat_cmd csdid_estat
 	adde local agg		 `agg'
 	adde scalar neqr =   `neqr'
+	local `:char _dta[note5]'
+	local `:char _dta[note4]'    
+	
+	adde local glev `glvls'
+	adde local tlev `tlvls'
+	adde matrix b_attgt = `bb'
+	adde matrix V_attgt = `vv'
 
 	if "`wboot'`wboot1'"!="" {
 		adde local vcetype "WBoot"
@@ -197,9 +295,10 @@ program csdid_est, rclass
 	if "`estore'"!="" est store `estore'
 	if "`esave'" !="" est save  `esave', `replace'
 	
-	Display
+	Display, level(`level')
 	matrix rtb=r(table)
- 	capture:qui:est restore `lastreg'
+	
+ 	if "`post'"=="" capture:qui:est restore `lastreg'
 	
 	return matrix table = rtb
 	return matrix b `b1'
@@ -259,12 +358,14 @@ mata:
 		
 void makerif2(string scalar rifgt_ , rifwt_ , agg, 
 				glvl_, tlvl_, bb_, ss_, clvar_, wboot , cband_,
-				real scalar ci, reps, wbtype, wnw ) {	
+				real scalar ci, reps, wbtype, 
+				string scalar wnw , real scalar citype, from) {	
 	// wnw Window				
     real matrix rifgt , rifwt, wgt, t0, glvl, tlvl
 	real scalar i,j,k,h, wndw
 	rifgt	= st_data(.,rifgt_)
 	rifwt  	= st_data(.,rifwt_)
+	
 	wndw=strtoreal(tokens(wnw))
 
 	/// pg here is just a dummy
@@ -284,7 +385,7 @@ void makerif2(string scalar rifgt_ , rifwt_ , agg,
 	/////////////////////////////////////////
 	// Always make attgt, even if not shown. 
 	if (agg=="attgt") {
-		make_tbl( (rifgt,rifwt) ,bb,VV,clvar_,wboot, cband_, ci, reps, wbtype)
+		make_tbl( (rifgt,rifwt) ,bb,VV,clvar_,wboot, cband_, ci, reps, wbtype, citype)
  	}
 	/////////////////////////////////////////
 	if (agg=="simple") {
@@ -297,7 +398,7 @@ void makerif2(string scalar rifgt_ , rifwt_ , agg,
 			for(j=1;j<=cols(tlvl);j++) {
 				k++
 				// G <= T
- 				if ((glvl[i]<=tlvl[j]) & (ind_wt[k]!=0)) {
+ 				if ((tlvl[j]-glvl[i]>=from) & (ind_wt[k]!=0)) {
 					//ag_rif=ag_rif, rifgt[.,k]
 					//ag_wt =ag_wt , rifwt[.,i]
 					ind_gt=ind_gt,k
@@ -309,8 +410,35 @@ void makerif2(string scalar rifgt_ , rifwt_ , agg,
 		ag_rif = rifgt[.,ind_gt]
 		ag_wt  = rifwt[.,ind_gt]
 		aux = aggte(ag_rif, ag_wt)
-		make_tbl(aux ,bb,VV,clvar_,wboot, cband_,ci, reps, wbtype)
+		make_tbl(aux ,bb,VV,clvar_,wboot, cband_,ci, reps, wbtype, citype)
 		coleqnm = "ATT"
+	}
+	
+	if (agg=="cevent") {
+		k=0
+		ind_gt=J(1,0,.)
+		// to verify is combination exists
+		ind_wt=colsum(abs(rifgt))
+		real scalar ffrom, tto
+		ffrom=wndw[1];tto=wndw[2]
+		for(i=1;i<=cols(glvl);i++) {
+			for(j=1;j<=cols(tlvl);j++) {
+				k++
+				// G <= T
+ 				if ((tlvl[j]-glvl[i]<=tto) & (tlvl[j]-glvl[i]>=ffrom) & (ind_wt[k]!=0)) {
+					//ag_rif=ag_rif, rifgt[.,k]
+					//ag_wt =ag_wt , rifwt[.,i]
+					ind_gt=ind_gt,k
+
+				}
+ 			}
+		}
+		// Above gets the Right elements Below, aggregates them
+		ag_rif = rifgt[.,ind_gt]
+		ag_wt  = rifwt[.,ind_gt]
+		aux = aggte(ag_rif, ag_wt)
+		make_tbl(aux ,bb,VV,clvar_,wboot, cband_,ci, reps, wbtype, citype)
+		coleqnm = "ATTC"
 	}
 	/////////////////////////////////////////
 	
@@ -329,7 +457,7 @@ void makerif2(string scalar rifgt_ , rifwt_ , agg,
 			ag_rif=J(rows(rifwt),0,.)
 			for(j=1;j<=cols(tlvl);j++) {
 				k++
- 				if ((glvl[i]<=tlvl[j]) & (ind_wt[k]!=0)) {
+ 				if ((tlvl[j]-glvl[i]>=from) & (ind_wt[k]!=0)) {
 					//ag_rif=ag_rif, rifgt[.,k]
 					flag=1
 					ind_gt=ind_gt,k
@@ -344,7 +472,7 @@ void makerif2(string scalar rifgt_ , rifwt_ , agg,
 		}
  
 		// get table elements		
-		make_tbl(aux ,bb,VV,clvar_,wboot, cband_,ci, reps, wbtype)
+		make_tbl(aux ,bb,VV,clvar_,wboot, cband_,ci, reps, wbtype, citype)
 	}	
 	/////////////////////////////////////////
 	
@@ -364,7 +492,7 @@ void makerif2(string scalar rifgt_ , rifwt_ , agg,
 			for(i=1;i<=cols(glvl);i++) {
 				for(j=1;j<=cols(tlvl);j++) {
 					k++
-					if ( (glvl[i]<=tlvl[j]) & (tlvl[h]==tlvl[j]) & (ind_wt[k]!=0) ){
+					if ( (tlvl[j]-glvl[i]>=from) & (tlvl[h]==tlvl[j]) & (ind_wt[k]!=0) ){
 						//ag_rif=ag_rif, rifgt[.,k]
 						//ag_wt =ag_wt , rifwt[.,i]
 						ind_gt=ind_gt,k
@@ -383,7 +511,7 @@ void makerif2(string scalar rifgt_ , rifwt_ , agg,
  			}
 		}	
 		// get table elements		
-		make_tbl(aux ,bb,VV,clvar_,wboot, cband_,ci, reps, wbtype)
+		make_tbl(aux ,bb,VV,clvar_,wboot, cband_,ci, reps, wbtype, citype)
 	}
 	
 	if (agg=="event") {
@@ -408,9 +536,9 @@ void makerif2(string scalar rifgt_ , rifwt_ , agg,
 						ind_gt=ind_gt,k
 						//ind_wt=ind_wt,i							
 						if (flag==0) {
-							if (evnt_lst[h]< 0) coleqnm=coleqnm+sprintf(" T%s" ,strofreal(evnt_lst[h]))
-							if (evnt_lst[h]==0) coleqnm=coleqnm+" T+0"
-							if (evnt_lst[h]> 0) coleqnm=coleqnm+sprintf(" T+%s",strofreal(evnt_lst[h]))
+							if (evnt_lst[h]< 0) coleqnm=coleqnm+sprintf(" Tm%s" ,strofreal(abs(evnt_lst[h])))
+							if (evnt_lst[h]==0) coleqnm=coleqnm+" Tp0"
+							if (evnt_lst[h]> 0) coleqnm=coleqnm+sprintf(" Tp%s",strofreal(abs(evnt_lst[h])))
 						}
 						flag=1
 					}
@@ -424,7 +552,7 @@ void makerif2(string scalar rifgt_ , rifwt_ , agg,
 			}
 		}	
 		// get table elements		
-		make_tbl(aux ,bb,VV,clvar_,wboot, cband_, ci, reps, wbtype)
+		make_tbl(aux ,bb,VV,clvar_,wboot, cband_, ci, reps, wbtype, citype)
 	}
 	
 	st_matrix(bb_,bb)
@@ -443,7 +571,7 @@ void makerif2(string scalar rifgt_ , rifwt_ , agg,
 }
 
 void make_tbl(real matrix rif,bb,VV, clv , string  scalar wboot, cband_,
-				real scalar ci, reps, wbtype){
+				real scalar ci, reps, wbtype, make_tbl){
 	real matrix aux, nobs, clvar
 	real scalar cln
 	bb=mean(rif)
@@ -461,7 +589,7 @@ void make_tbl(real matrix rif,bb,VV, clv , string  scalar wboot, cband_,
 	real matrix cband
 	// wboot no cluster
 	if (wboot!=" ") {
-		mboot(rif,bb, VV, cband, clv, ci, reps, wbtype)
+		mboot(rif,bb, VV, cband, clv, ci, reps, wbtype, make_tbl)
 		st_matrix(cband_,cband)
 	}
  } 
@@ -582,14 +710,29 @@ real matrix iqrse(real matrix y) {
 	return(iqrs)
 }
 
-real vector qtp(real matrix y, real scalar p) {
+real vector qtp2(real matrix y, real scalar p) {
     real scalar k, i, q
 	real matrix yy, qq
 	qq=J(1,0,.)
 	k = cols(y)
 	for(i=1;i<=k;i++){
 		yy=sort(y[,i],1)
-		q=ceil((rows(yy)+1)*p)    
+		q=ceil((rows(yy)+1)*p) 
+		qq=qq,yy[q,]
+	}
+    
+	return(qq)
+}
+
+real vector qtp(real matrix y, real scalar p) {
+    real scalar k, i, q
+	real matrix yy, qq
+	qq=J(1,0,.)
+	k = cols(y)
+	y=rowmax(y)
+	for(i=1;i<=k;i++){
+		yy=sort(y,1)
+		q=ceil((rows(yy)+1)*p) 
 		qq=qq,yy[q,]
 	}
     
@@ -597,9 +740,9 @@ real vector qtp(real matrix y, real scalar p) {
 }
  
 void mboot(real matrix rif,mean_rif, vv, cband, string scalar clv,
-			real scalar ci, reps, wbtype) {
+			real scalar ci, reps, wbtype, citype) {
     //, real scalar reps, bwtype, ci 
-    real matrix fr
+    real matrix fr, tt
 	///real scalar reps, wbtype
 	///reps   = 999
 	///wbtype =   1
@@ -610,11 +753,15 @@ void mboot(real matrix rif,mean_rif, vv, cband, string scalar clv,
 		fr=mboot_did(rif,mean_rif, reps, wbtype)
 		ifse = iqrse(fr)
 		// this gets Tvalue
+		  
+		if (citype ==1) tt = qtp(abs(fr :/ ifse),ci)  
+		else if (citype ==2) tt = qtp2(abs(fr :/ ifse),ci)
+		
 		cband=( mean_rif',
 				ifse',
 				mean_rif':/ifse',
-				mean_rif':-qtp(abs(fr :/ ifse),ci)':* ifse' ,  
-				mean_rif':+qtp(abs(fr :/ ifse),ci)':* ifse'   )
+				mean_rif':-tt':* ifse' ,  
+				mean_rif':+tt':* ifse'   )
 	}
 	else {
 		clvar=st_data(.,clv)
@@ -622,12 +769,14 @@ void mboot(real matrix rif,mean_rif, vv, cband, string scalar clv,
 		
 		ifse = iqrse(fr)
 		// this gets Tvalue
+		if (citype ==1)      tt = qtp(abs(fr :/ ifse),ci)  
+		else if (citype ==2) tt = qtp2(abs(fr :/ ifse),ci)
 		
 		cband=( mean_rif',
 				ifse',
 				mean_rif':/ifse',
-				mean_rif':-qtp(abs(fr :/ ifse),ci)':* ifse' ,  
-				mean_rif':+qtp(abs(fr :/ ifse),ci)':* ifse'   )
+				mean_rif':-tt':* ifse' ,  
+				mean_rif':+tt':* ifse'   )
 				
 	}
 	vv=quadcross(ifse,ifse):*I(rows(ifse))

@@ -1,3 +1,4 @@
+*! v1.1  Problem with TM TP
 /*capture program drop  csdid_plot
 capture program drop  adds
 capture program drop csdid_default
@@ -46,16 +47,20 @@ program csdid_plot
 		if "`e(agg)'"=="event" {
 			 qui:csdid
 			 local evlist = subinstr("`:colname e(b)'","T","",.)
+			 local evlist = subinstr("`evlist'","m","-",.)
+			 local evlist = subinstr("`evlist'","p","+",.)
 			 matrix `mm'=r(table)'
 		}
 		else if "`r(agg)'"=="event" {		 
 			 local evlist = subinstr("`:colname r(b)'","T","",.)
+			 local evlist = subinstr("`evlist'","m","-",.)
+			 local evlist = subinstr("`evlist'","p","+",.)
 			 matrix `mm'=r(table)'
 		}
 		
 		qui:svmat `mm'
 		qui:gen `kk' =.
-		foreach i of local evlist {
+ 		foreach i of local evlist {
 		 	local k = `k'+1
 		 	qui:replace `kk'=`i' in `k'
 		}
@@ -192,12 +197,14 @@ program _matrix_list, sclass
 		}
 	}
 	local tlist:rowname `mm'
-	foreach i of local tlist {
-		local j: word 2 of `=subinstr(subinstr("`i'","t","",.),"_"," ",.)'
-		local t0t1 `t0t1' `=`j'-`group''
+	foreach i in `e(tlev)' {
+		*local j1: word 1 of `=subinstr(subinstr("`i'","t","",.),"_"," ",.)'
+		*local j2: word 2 of `=subinstr(subinstr("`i'","t","",.),"_"," ",.)'
+		local t0t1 `t0t1' `=`i'-`group''
 	}
 		
 	matrix `nmatrix'   = `mm'
+	
 	sreturn local  mt0t1 `t0t1'
 end
 

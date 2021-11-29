@@ -42,6 +42,9 @@ period of the first treatment, across all cohorts.{p_end}
 
 {synopt:{opt event, window(#1 #2)}}Same as above, but request only events between #1 and #2 to be estimated. {p_end}
 
+{synopt:{opt cevent, window(#1 #2)}}Estimates Censored Event averages. It estimates the average across all ATTGT's that correspond 
+to periods between T#1 and T#2, inclusive. For example estat cevent , window(0 0) simply reproduces the effect at T+0.{p_end}
+
 {synopt:{opt all}}Produces all aggregations. Not available with csdid_stats. And cannot be combined with estore() nor esave() {p_end}
 
 {synopt:{opt attgt}}Produces the ATTGT's. {p_end}
@@ -53,6 +56,9 @@ period of the first treatment, across all cohorts.{p_end}
 {synopt:{opt esave(name)}}When using any of the 4 types of aggregations, request saving the outcome in disk. {p_end}
 
 {synopt:{opt replace}}Request to replace {it:ster} file, if the a file already exists.{p_end}
+{synoptline}
+
+{synopt:{opt post}}Request posting the results in e().{p_end}
 {synoptline}
 
 {syntab:{bf: Standard Error Options}}
@@ -71,10 +77,11 @@ was estimated requesting Wbootstrap standard errors. {p_end}
 {synopt:wboot}Request Estimation of Standard errors using a multiplicative WildBootstrap procedure.
 The default uses 999 repetitions using mammen approach. {p_end}
 
-{synopt:reps(#)}Specifies the number of repetitions to be used for the Estimation of the WBoot SE. Default is 999 {p_end}
+{synopt:wboot(reps(#))}Specifies the number of repetitions to be used for the Estimation of the WBoot SE. Default is 999 {p_end}
 
-{synopt:wtype(type)}Specifies the type of Wildbootstrap procedure. The default is "mammen", but "rademacher" is also 
+{synopt:wboot(wtype(type))}Specifies the type of Wildbootstrap procedure. The default is "mammen", but "rademacher" is also 
 avilable.{p_end}
+
 
 {synopt:rseed(#)}Specifies the seed for the WB procedure. Use for replication purposes.{p_end}
 

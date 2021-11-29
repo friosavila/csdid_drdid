@@ -37,7 +37,7 @@ has a panel structure, and will apply panel estimators. When no variable is decl
  repeated crosssection (RC), and applies RC estimators. {p_end}
  
 {synopt:{opt t:ime(varname)}} Variable to identify time. e.g., {it:year}. Periods do not need to be consecutive, but
-the variable is expected to be strictly positive. {p_end}
+the variable is expected to be strictly positive, with regular gaps. {p_end}
 
 {synopt:{opt gvar(varname)}} Variable identifying treatment groups or cohorts. Groups that are never treated should be coded as Zero. 
 Any positive value indicates which year a group was initially treated. And once a group is treated, the underlying assumption
@@ -54,6 +54,9 @@ considered always treated, and are excluded from the sample. {p_end}
 
 {synopt:{opt notyet}} Request using observations never treated and those not yet treated as control group. 
 The default is using never treated only. If there are no {it:never treated} observations, notyet is used automatically.{p_end}
+
+{synopt:{opt long}}For periods before treatment, this option requests the estimation of Long gaps, rather 
+than short-gaps.{p_end}
 
 {synoptline}
 {syntab:{bf: Estimation Method} }
@@ -74,10 +77,10 @@ To specify a particular syntax, one should use the option {cmd: method({it:metho
 
 {synopthdr}
 {synoptline}
-{synopt:drimp (default)}Sant'Anna and Zhao (2020) Improved doubly robust DiD estimator based on 
+{synopt:drimp (default)}Sant’Anna and Zhao (2020) Improved doubly robust DiD estimator based on 
 inverse probability of tilting and weighted least squares. {p_end}
 
-{synopt:dripw}Sant'Anna and Zhao (2020) doubly robust DiD estimator based on stabilized 
+{synopt:dripw}Sant’Anna and Zhao (2020) doubly robust DiD estimator based on stabilized 
 inverse probability weighting and ordinary least squares{p_end}
 
 {synopt:reg}Outcome regression DiD estimator based on ordinary least squares {p_end}
@@ -87,7 +90,7 @@ inverse probability weighting and ordinary least squares{p_end}
 {synopt:ipw}Abadie (2005) inverse probability weighting DiD estimator{p_end}
 
 {synopt:rc1}In combination with the methods {cmd drimp} and {cmd dripw}, this option request the doubly robust
-but not locally efficient repeated crosssection estimators. Not available when using panel data. 
+but not locally efficient repeated crossection estimators. Not available when using panel data. 
 
 
 {synoptline}
@@ -103,9 +106,10 @@ but not locally efficient repeated crosssection estimators. Not available when u
 {synopt:wboot}Request Estimation of Standard errors using a multiplicative WildBootstrap procedure.
 The default uses 999 repetitions using mammen approach. {p_end}
 
-{synopt:reps(#)}Specifies the number of repetitions to be used for the Estimation of the WBoot SE. Default is 999 {p_end}
+{synopt:wboot(Options)} Request Estimation of Standard errors using a multiplicative WildBootstrap procedure, and allows to change default options {p_end}
+{synopt:-   reps(#)}Specifies the number of repetitions to be used for the Estimation of the WBoot SE. Default is 999 {p_end}
 
-{synopt:wtype(type)}Specifies the type of Wildbootstrap procedure. The default is "mammen", but "rademacher" is also 
+{synopt:-   wtype(type)}Specifies the type of Wildbootstrap procedure. The default is "mammen", but "rademacher" is also 
 avilable.{p_end}
 
 {synopt:rseed(#)}Specifies the seed for the WB procedure. Use for replication purposes.{p_end}
@@ -116,6 +120,11 @@ and Wbootstrap Standard errors.{p_end}
 {synopt:}Remark 1. When Panel estimators are used, asymptotic and Wbootstrap Standard errors are already clustered at the panel level.
 When using cluster, one is effectively requesting a two-way cluster estimation.{p_end}
 {synopt:}Remark 2. When Panel estimators are used, The panel id should be nested within the cluster variable . (ivar) {p_end}
+
+{synopt:level(#)}Request changing the confidence level (default 95) for the estimation of Confidence Intervals.{p_end}
+
+{synopt:pointwise}Request producing pointwise CI, when requesting Wildbootstrap SE. The default is to request Uniform Confidence Intervals.{p_end}
+
 {synoptline}
 
 {syntab:{bf: Other Options}}
@@ -135,12 +144,10 @@ or SE after the model has been estimated. {p_end}
 
 {synopt:agg(aggtype)}This option can be used to produce different aggregations as the command output. The default is 
 {cmd: attgt}, which produces the ATT for a particular cohort, and a particular period. Other options are: {p_end}
-{synopt:}This option can be used to produce different aggregations as the command output. The default is 
-{cmd: attgt}, which produces the ATT for a particular cohort, and a particular period. Other options are: {p_end}
 
 {synopt:simple}Estimates the ATT for all groups across all periods {p_end}
 
-{synopt:group}Estimates the ATT for each group or cohort, overall periods {p_end}
+{synopt:group}Estimates the ATT for each group or cohort, across all periods {p_end}
 
 {synopt:calendar}Estimates the ATT for each period, across all groups or cohorts {p_end}
 
@@ -163,7 +170,7 @@ even if covariates are time-varying, only the base-period values are used for th
 {p_end}
  
 {pstd}
-When using crosssection data, while all characteristics can be considered time-varying, the underlying assumption is that 
+When using crossection data, while all characteristics can be considered time-varying, the underlying assumption is that 
 within treated and untreated group, characteristics are stationary (time constant). In other words, 
 be careful of controlling for characteristics that are either time constant (e.g. sex or race), or for 
 pretreatment characteristics.
@@ -176,27 +183,28 @@ the parallel trends assumption will be violated, and the estimations of the effe
 {p_end}
 
 {pstd}
-When all units fall ATTGT corresponds to a case where all observations are not yet treated, those can be used as a test for
-pretrends. 
-{p_end}
-
-{pstd}
 For the command to work, you need to have at least one period in the data for each group/cohort in gvar. You also require 
-at least one period previous to a cohort/group, in order to estimate the ATT for that cohort.
+at least one pre-treatment period for each cohort/group, in order to estimate the ATT for that group.
 {p_end}
 
 {pstd}
-From the perspective of the treated observations, all ATTGT's are estimated using the last not treated period as "base-period"
-using current period as the post period. The control groups are selected for the same points in time.
+From the perspective of the treated observations, all ATTGT's are estimated using the last not treated period as "base-period", and
+using current period as the post period. 
 {p_end}
 
 {pstd}
-For ATT's before the treatment took place use T-1 as the base period (or Pre-period), and T as the post-period. 
-For ATT's after the treatment took place use G-1 as the base period (pre-treatment period) and T as the post-period.
+For ATT's before the treatment took place, the command uses T-1 as the base period (or Pre-period), and T as the post-period. This corresponds to the {cmd short} pre-treatment gap.
+{p_end}
+{pstd}
+When {cmd long} gaps are requested, the ATT's before treatment took place uses T-1 as base period, and G-1 as the post period. where G is the first period a unit received treatment. 
 {p_end}
 
 {pstd}
-Because the estimator attempts to estimate all ATTGT's for all groups across all periods, the implementation of this estimator
+For ATT's after the treatment took place, the command uses G-1 as the base period (pre-treatment period) and T as the post-period.
+{p_end}
+
+{pstd}
+Because the estimator attempts to estimate all ATTGT's for all groups across all periods, the implementation of this estimator 
 for cross-section data with long time spans and many treated groups may not be feasible. For example, using 30 periods, with 20 potential 
 groups would require the estimation of 600 separate regressions, and the creation of at least the same number of new variables
 containing the RIF's for all ATTGT's, rapidly consuming the memory resources of commonly used computers. 
@@ -219,13 +227,25 @@ This approach is in contrast with the default approach in R's DID. When unbalanc
 estimate the model using Repeated Crossection estimators. See the example below contrasting both approaches.
 {p_end}
 {pstd}
-Even if WBootstrap SE are requested, asymptotic SE are in e().
+Even if WBootstrap SE are requested, asymptotic SE are stored in e().
+{p_end}
+{pstd}
+Each succesful iteration is represnted by a ".", whereas an "x" indicates for some ATT(G,T), the estimation failed.
 
 {marker post_estimation}{...}
 {title:Post Estimaton}
 
 {pstd}
 {cmd: csdid} offers three post estimation utilities. See {help csdid_postestimation} for more details.
+{p_end}
+
+{phang}{cmd: csdid_estat} For the estimation of aggregations and pretreatment tests.
+{p_end}
+
+{phang}{cmd: csdid_stats} For the estimation of aggregations and pretreatment tests using RIF files.
+{p_end}
+
+{phang}{cmd: csdid_plot} For the creating plots of the results.
 {p_end}
 
 {marker examples}{...}
@@ -301,7 +321,7 @@ University of Georgia{p_end}
 "Difference-in-Differences with multiple time periods." 
 {it:Journal of Econometrics}.{p_end}
 
-{phang2}Sant'Anna, Pedro H. C., and Jun Zhao. 2020. 
+{phang2}Sant’Anna, Pedro H. C., and Jun Zhao. 2020. 
 "Doubly Robust Difference-in-Differences Estimators." 
 {it:Journal of Econometrics} 219 (1): 101–22.{p_end}
 
@@ -309,7 +329,7 @@ University of Georgia{p_end}
 {phang2}Rios-Avila, Fernando, 
 Pedro H. C. Sant'Anna, 
 and Brantly Callaway, 2021.
- "CSDID: Difference-in-Differences with Multiple periods." 
+ “CSDID: Difference-in-Differences with Multiple periods.” 
 {p_end}
 
 {marker aknowledgement}{...}
