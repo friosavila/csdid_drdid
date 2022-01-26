@@ -363,6 +363,7 @@ void makerif2(string scalar rifgt_ , rifwt_ , agg,
 	// wnw Window				
     real matrix rifgt , rifwt, wgt, t0, glvl, tlvl
 	real scalar i,j,k,h, wndw
+	real matrix sumwgt, aux2
 	rifgt	= st_data(.,rifgt_)
 	rifwt  	= st_data(.,rifwt_)
 	
@@ -447,7 +448,8 @@ void makerif2(string scalar rifgt_ , rifwt_ , agg,
 		k=0
 		
 		aux    =J(rows(rifwt),0,.)
-		coleqnm=""
+		sumwgt =J(rows(rifwt),0,.)
+		coleqnm="GAverage"
 		ind_wt=colsum(abs(rifgt))
 
 		/// ag_wt=J(rows(rifwt),0,.)
@@ -463,14 +465,18 @@ void makerif2(string scalar rifgt_ , rifwt_ , agg,
 					ind_gt=ind_gt,k
  				}
  			}
+			
 			if (flag==1)  {
 				coleqnm=coleqnm+sprintf(" G%s",strofreal(glvl[i]))
 				ag_rif = rifgt[.,ind_gt]
 				ag_wt  = rifwt[.,ind_gt]
+				sumwgt = sumwgt, rowsum(ag_wt):/rowsum(ag_wt:!=0)
 				aux = aux, aggte(ag_rif, ag_wt)
 			}
 		}
- 
+		_editmissing(sumwgt,0)
+		aux = aggte(aux, sumwgt), aux
+		
 		// get table elements		
 		make_tbl(aux ,bb,VV,clvar_,wboot, cband_,ci, reps, wbtype, citype)
 	}	
@@ -478,17 +484,14 @@ void makerif2(string scalar rifgt_ , rifwt_ , agg,
 	
 	if (agg=="calendar") {
 		// i groups j time
-		aux =J(rows(rifwt),0,.)
-		coleqnm=""
-		ind_wt=colsum(abs(rifgt))
-		
+		sumwgt=aux =J(rows(rifwt),0,.)
+		coleqnm="CAverage "
+		ind_wt=colsum(abs(rifgt))		
 		for(h=1;h<=cols(tlvl);h++){
 			k=0
 			flag=0
 			ind_gt=J(1,0,.)
-		
 			/// ag_wt=J(rows(rifwt),0,.)
- 
 			for(i=1;i<=cols(glvl);i++) {
 				for(j=1;j<=cols(tlvl);j++) {
 					k++
@@ -501,32 +504,34 @@ void makerif2(string scalar rifgt_ , rifwt_ , agg,
 						flag=1
 					}
 				}
-				
 			}
 			
 			if (flag==1) {
 				ag_rif = rifgt[.,ind_gt]
 				ag_wt  = rifwt[.,ind_gt]
-				aux = aux, aggte(ag_rif, ag_wt)
+				sumwgt = sumwgt, rowsum(ag_wt):/rowsum(ag_wt:!=0)
+ 				aux = aux, aggte(ag_rif, ag_wt)
  			}
-		}	
+		}
+		_editmissing(sumwgt,0)
+		aux = aggte(aux, sumwgt), aux		
 		// get table elements		
 		make_tbl(aux ,bb,VV,clvar_,wboot, cband_,ci, reps, wbtype, citype)
 	}
 	
 	if (agg=="event") {
 		// i groups j time
-		real matrix evnt_lst
+		real matrix evnt_lst, iit
 		evnt_lst=event_list(glvl,tlvl,wndw)
-		coleqnm=""
+		coleqnm="Pre_avg Post_avg "
 		ind_wt=colsum(abs(rifgt))
-		aux =J(rows(rifwt),0,.)
+		sumwgt = aux =J(rows(rifwt),0,.)
+		iit = J(1,0,.)
 		for(h=1;h<=cols(evnt_lst);h++){
 			k=0
 			flag=0
 			ind_gt=J(1,0,.)
  			/// ag_wt=J(rows(rifwt),0,.)
- 
 			for(i=1;i<=cols(glvl);i++) {
 				for(j=1;j<=cols(tlvl);j++) {
 					k++					
@@ -548,9 +553,14 @@ void makerif2(string scalar rifgt_ , rifwt_ , agg,
 			if (flag==1) {
 				ag_rif = rifgt[.,ind_gt]
 				ag_wt  = rifwt[.,ind_gt]			
-				aux = aux, aggte(ag_rif, ag_wt, )
+				sumwgt = sumwgt, rowsum(ag_wt):/rowsum(ag_wt:!=0)
+				aux    = aux, aggte(ag_rif, ag_wt )
+				iit    = iit , evnt_lst[h]>=0
 			}
-		}	
+		}
+		_editmissing(sumwgt,0)
+		aux =   aggte(select(aux,iit:==0), select(sumwgt,iit:==0)), 
+				aggte(select(aux,iit)    , select(sumwgt,iit))    ,aux
 		// get table elements		
 		make_tbl(aux ,bb,VV,clvar_,wboot, cband_, ci, reps, wbtype, citype)
 	}

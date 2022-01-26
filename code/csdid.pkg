@@ -41,6 +41,8 @@ f drdid.ado
 f drdid_predict.ado
 f drdid_display.ado
 f drdid.sthlp
+f tsvmat.ado
+f _gcsgvar.ado
 f _gmm_dripw.ado
 f _gmm_regipw.ado
 f _gmm_repeated.ado

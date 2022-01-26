@@ -1,3 +1,5 @@
+
+*! v1.53 FRA adds Average Group
 *! v1.52 FRA add window to cevent. Censored averages.
 *! v1.51 FRA add from to simple calendar and group
 *! v1.5 FRA Change from nlcom to mata
@@ -296,16 +298,42 @@ void csdid_group(string scalar bb_, vv_, gl_, tl_, real scalar from){
 	r2 = r2:*iii
 	real matrix bbb, vvv
 	bbb=rowsum(br :* bw:*iii):/rowsum(bw :* iii)
+ 	vvv=makesymmetric((r1,r2)*v*(r1,r2)')
+
+	//st_matrix("r_b_",bbb')
+	//st_matrix("r_V_",vvv)
+	
+	/// FOR EXTRA
+	real matrix rx1, rx2, rx3, xbb, xvv
+	rx1 = r1*0
+	rx2 = (iii):/rowsum(iii)
+	rx1= r1\rx1
+	rx2= r2\rx2
+	xbb=bbb\ (rowsum(bw :* iii):/rowsum(iii) )
+	xvv=makesymmetric((rx1,rx2)*v*(rx1,rx2)')
+	// sm for group N
+	real scalar sm
+	sm=rows(xvv)
+	iii=J(1,sm/2,1)
+	xbb=xbb'
+	br=xbb[1,1..sm/2]
+	bw=xbb[1,sm/2+1..sm]
  
-	vvv=makesymmetric((r1,r2)*v*(r1,r2)')
+	r1 = (bw :* iii):/rowsum(bw :* iii)
+	r2 = (br :* iii):/rowsum(bw :* iii):-rowsum((br:*iii):*(bw:*iii)):/(rowsum(bw :* iii):^2)
+	r2 = r2:*iii
+ 
+	xbb=rowsum(br :* bw:*iii):/rowsum(bw :* iii)
+ 	xvv=makesymmetric((r1,r2)*xvv*(r1,r2)')
 	
-	
-	st_matrix("r_b_",bbb')
+	bbb=xbb',bbb'
+	vvv=blockdiag(xvv,vvv)
+	st_matrix("r_b_",bbb)
 	st_matrix("r_V_",vvv)
 	
-	stata("matrix colname r_b_ ="+coleqnm)
-	stata("matrix colname r_V_ ="+coleqnm)
-	stata("matrix rowname r_V_ ="+coleqnm)
+	stata("matrix colname r_b_ = GAverage "+coleqnm)
+	stata("matrix colname r_V_ = GAverage "+coleqnm)
+	stata("matrix rowname r_V_ = GAverage "+coleqnm)
 
 }
  
@@ -354,12 +382,44 @@ void csdid_calendar(string scalar bb_, vv_, gl_, tl_, real scalar from){
  
 	vvv=makesymmetric((r1,r2)*v*(r1,r2)')
 	
-	st_matrix("r_b_",bbb')
+	//st_matrix("r_b_",bbb')
+	//st_matrix("r_V_",vvv)
+	
+	
+	real matrix rx1, rx2, rx3, xbb, xvv
+	rx1 = r1*0
+	rx2 = (iii):/rowsum(iii)
+	rx1= r1\rx1
+	rx2= r2\rx2
+	xbb=bbb\ (rowsum(bw :* iii):/rowsum(iii) )
+	xvv=makesymmetric((rx1,rx2)*v*(rx1,rx2)')
+	// sm for group N
+	real scalar sm
+	sm=rows(xvv)
+	iii=J(1,sm/2,1)
+	xbb=xbb'
+	br=xbb[1,1..sm/2]
+	bw=xbb[1,sm/2+1..sm]
+ 
+	r1 = (bw :* iii):/rowsum(bw :* iii)
+	r2 = (br :* iii):/rowsum(bw :* iii):-rowsum((br:*iii):*(bw:*iii)):/(rowsum(bw :* iii):^2)
+	r2 = r2:*iii
+ 
+	xbb=rowsum(br :* bw:*iii):/rowsum(bw :* iii)
+ 	xvv=makesymmetric((r1,r2)*xvv*(r1,r2)')
+	
+	bbb=xbb',bbb'
+	vvv=blockdiag(xvv,vvv)
+	st_matrix("r_b_",bbb)
 	st_matrix("r_V_",vvv)
 	
-	stata("matrix colname r_b_ ="+coleqnm)
-	stata("matrix colname r_V_ ="+coleqnm)
-	stata("matrix rowname r_V_ ="+coleqnm)
+	stata("matrix colname r_b_ = CAverage "+coleqnm)
+	stata("matrix colname r_V_ = CAverage "+coleqnm)
+	stata("matrix rowname r_V_ = CAverage "+coleqnm)
+	
+	///stata("matrix colname r_b_ ="+coleqnm)
+	///stata("matrix colname r_V_ ="+coleqnm)
+	///stata("matrix rowname r_V_ ="+coleqnm)
 	}
 
 void csdid_pretrend(string scalar bb_, vv_, gl_, tl_){
@@ -482,9 +542,12 @@ vector ptreat(real matrix glvl, tlvl, b){
 	ii=(1..(cols(glvl)*cols(tlvl)))
 
 	coleqnm=""
-	real matrix iii
-	iii=J(0,cols(ii),.)
+	real matrix iii, iit
 	
+	iii=J(0,cols(ii),.)
+	iit=J(1,0,.)
+	/// THINK HOW TO ID Possitive Events. 
+	/// 
 	for(h=1;h<=cols(evnt_lst);h++){
 		k=0
 		flag=0
@@ -505,7 +568,10 @@ vector ptreat(real matrix glvl, tlvl, b){
 				}
 			}
 		}
-		if (flag == 1) iii=iii\ii
+		if (flag == 1) {
+			iii=iii\ii
+			iit=iit,(evnt_lst[h]>=0)
+		}
 	}
 	real matrix r1, r2
 	r1 = (bw :* iii):/rowsum(bw :* iii)
@@ -516,12 +582,43 @@ vector ptreat(real matrix glvl, tlvl, b){
  
 	vvv=makesymmetric((r1,r2)*v*(r1,r2)')
 	
-	st_matrix("r_b_",bbb')
+	///st_matrix("r_b_",bbb')
+	///st_matrix("r_V_",vvv)
+	
+	real matrix rx1, rx2, rx3, xbb, xvv
+	rx1 = r1*0
+	rx2 = (iii):/rowsum(iii)
+	rx1= r1\rx1
+	rx2= r2\rx2
+	xbb=bbb\ (rowsum(bw :* iii):/rowsum(iii) )
+	xvv=makesymmetric((rx1,rx2)*v*(rx1,rx2)')
+	// sm for group N
+	real scalar sm
+	sm=rows(xvv)
+	iii=J(1,sm/2,1):*((1:-iit)\iit)
+	xbb=xbb'
+	br=xbb[1,1..sm/2]
+	bw=xbb[1,sm/2+1..sm]
+ 
+	r1 = (bw :* iii):/rowsum(bw :* iii)
+	r2 = (br :* iii):/rowsum(bw :* iii):-rowsum((br:*iii):*(bw:*iii)):/(rowsum(bw :* iii):^2)
+	r2 = r2:*iii
+ 
+	xbb=rowsum(br :* bw:*iii):/rowsum(bw :* iii)
+ 	xvv=makesymmetric((r1,r2)*xvv*(r1,r2)')
+	
+	bbb=xbb',bbb'
+	vvv=blockdiag(xvv,vvv)
+	st_matrix("r_b_",bbb)
 	st_matrix("r_V_",vvv)
 	
-	stata("matrix colname r_b_ ="+coleqnm)
-	stata("matrix colname r_V_ ="+coleqnm)
-	stata("matrix rowname r_V_ ="+coleqnm)
+	stata("matrix colname r_b_ = Pre_avg Post_avg "+coleqnm)
+	stata("matrix colname r_V_ = Pre_avg Post_avg "+coleqnm)
+	stata("matrix rowname r_V_ = Pre_avg Post_avg "+coleqnm)
+		
+	///stata("matrix colname r_b_ ="+coleqnm)
+	///stata("matrix colname r_V_ ="+coleqnm)
+	///stata("matrix rowname r_V_ ="+coleqnm)
 	}
  
  

@@ -4,6 +4,7 @@
 ** 2 use semi balance (whenever att_gt exists)
 ** 3 use weak balance/crossection with cluster.
 ** Ultimate check. Do thestatistics Once.
+* v1.56  by FRA. Typo bug for NOT YET
 *! v1.55  by FRA. Allows for more periods
 * v1.53  by FRA. changes e(gtt). THis give sdetailed sample 
 * v1.52  by FRA. Adds option "from" for simple aggregation
@@ -410,8 +411,7 @@ program csdid_r, sortpreserve eclass
 			if _rc!=0 {
 				qui:xtset `ivar' `time'
 				qui:xtset ,  clear
-			}
-			
+			}			
 			
 			if "`cluster'"!="" {
 				_xtreg_chk_cl2 `cluster' `ivar'
@@ -469,7 +469,7 @@ program csdid_r, sortpreserve eclass
 					capture drop `gsel'
 					qui:gen byte `gsel'=inlist(`gvar',0,`i') if  `touse'
 					if "`tyet'"!="" {
-						qui:replace `gsel'=1 if (`gvar'==0 | `gvar'==`i' | `gvar'> `j') & `touse'
+						qui:replace `gsel'=1 if (`gvar'==0 | `gvar'==`i' | (`gvar'> `i' & `gvar' >`j' )) & `touse'
 					}
 					capture drop `tr'
 					qui:gen byte `tr'=(`gvar'==`i') if `touse'
@@ -480,7 +480,6 @@ program csdid_r, sortpreserve eclass
 								 & `touse' [`weight'`exp'],   ///
 								ivar(`ivar') time(`time') treatment(`tr') ///
 								`method' stub(__) replace `dryrun'
-					
 					
 					
 					if _rc == 1 {
@@ -536,7 +535,7 @@ program csdid_r, sortpreserve eclass
 					capture drop `gsel'
 					qui:gen byte `gsel'=inlist(`gvar',0,`i') if  `touse'
 					if "`tyet'"!="" {
-						qui:replace `gsel'=1 if (`gvar'==0 | `gvar'==`i' | `gvar'> `j') & `touse'
+						qui:replace `gsel'=1 if (`gvar'==0 | `gvar'==`i' | (`gvar'> `i' & `gvar' >`j' )) & `touse'
 					}
 					capture drop `tr'
 					qui:gen byte `tr'=(`gvar'==`i') if `touse'
