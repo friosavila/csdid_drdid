@@ -4,12 +4,12 @@
 
 {it:{bf:Aggregations and Pretrend testing}}
 
-There are two commands that can be used as post estimation tools. These are {cmd:csdid_estat} and {cmd:csdid_stats}.
+{p}There are two commands that can be used as post estimation tools. These are {cmd:csdid_estat} and {cmd:csdid_stats}.
 Both can be used to obtain similar statistics. The first one, {cmd:csdid_estat}, works when using 
-{cmd: estat}, after the model estimation via {help csdid}. 
+{cmd: estat}, after the model estimation via {help csdid}. {p_end}
 
-The second one {cmd:csdid_stats} works similarly but when using the "saved" RIF file. It can be used to produce 
-wild Bootstrap SE.
+{p}The second one {cmd:csdid_stats} works similarly but when using the "saved" RIF file. It can be used to produce 
+wild Bootstrap SE.{p_end}
 
 Below the syntax for both commands is discussed.
 
@@ -27,6 +27,9 @@ Below the syntax for both commands is discussed.
 {synopthdr:Subcommands}
 {synoptline}
 {synopt :{opt pretrend}}Estimates the chi2 statistic of the null hypothesis that ALL pretreatment ATTGT's are 
+statistically equal to zero.{p_end}
+
+{synopt :{opt pretrend, window(#1 #2)}}Estimates the chi2 statistic of the null hypothesis that ALL pretreatment ATTGT's within window are 
 statistically equal to zero.{p_end}
  
 Aggregation subcommands.
@@ -198,12 +201,17 @@ University of Georgia{p_end}
 "Semiparametric Difference-in-Differences Estimators." 
 {it:The Review of Economic Studies} 72 (1): 1–19.{p_end}
 
+{phang2}Callaway, Brantly and Sant'Anna, Pedro H. C. 2021. 
+"Difference-in-Differences with multiple time periods." , 225(2):200-230.
+{it:Journal of Econometrics}.{p_end}
+
 {phang2}Sant’Anna, Pedro H. C., and Jun Zhao. 2020. 
 "Doubly Robust Difference-in-Differences Estimators." 
 {it:Journal of Econometrics} 219 (1): 101–22.{p_end}
 
 {phang2}Rios-Avila, Fernando, 
-and Pedro H. C. Sant'Anna 2021.
+Pedro H. C. Sant'Anna, 
+and Brantly Callaway, 2021.
  “CSDID: Difference-in-Differences with Multiple periods.” 
 {p_end}
 

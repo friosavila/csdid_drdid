@@ -1,4 +1,5 @@
-*! v1.1  Problem with TM TP
+*! v1.2  Compatible with new Group Averages
+* v1.1  Problem with TM TP
 /*capture program drop  csdid_plot
 capture program drop  adds
 capture program drop csdid_default

@@ -4,8 +4,8 @@
 ** 2 use semi balance (whenever att_gt exists)
 ** 3 use weak balance/crossection with cluster.
 ** Ultimate check. Do thestatistics Once.
-* v1.56  by FRA. Typo bug for NOT YET
-*! v1.55  by FRA. Allows for more periods
+* v1.56  by FRA. bug for NOT YET, 2021 ref
+* v1.55  by FRA. Allows for more periods
 * v1.53  by FRA. changes e(gtt). THis give sdetailed sample 
 * v1.52  by FRA. Adds option "from" for simple aggregation
 * v1.51  by FRA. Added seed and method. for bootstrap
@@ -630,7 +630,7 @@ program csdid_r, sortpreserve eclass
 					local kc=`kc'+1
 					local rvl:word `kc' of `vlabrif'
 					qui:gen double w`i'_`j'=0
-					qui:replace w`i'_`j'=1 if (`rvl'!=.) & (`gvar'==`i')
+					qui:replace w`i'_`j'=1 if (`rvl'!=.) & (`gvar'==`i') 
 					local lvl_gvar `lvl_gvar' w`i'_`j'
 				}
 			}
@@ -786,7 +786,7 @@ program csdid_r, sortpreserve eclass
 		
 	Display, level(`level')
 	display "Control: `e(control_group)'" 
-	display _n "See Callaway and Sant'Anna (2020) for details"
+	display _n "See Callaway and Sant'Anna (2021) for details"
 end 
 
 /// This can be used for aggregation. Creates the matrixes we need.

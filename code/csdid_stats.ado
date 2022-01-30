@@ -1,4 +1,5 @@
-*! v1.55 FRA allows for more periods
+*! v1.55 FRA Reports Group,calendar,event averages
+* v1.55 FRA allows for more periods
 * v1.53 FRA add window to cevent. Censored averages.
 * v1.52 FRA changes how data is stored for csdid estat
 * v1.51 FRA add from to simple calendar and group
@@ -300,9 +301,22 @@ program csdid_est, rclass
 	
  	if "`post'"=="" capture:qui:est restore `lastreg'
 	
+	if inlist("`agg'","group","calendar")  {
+		tempname bb vv
+		matrix `bb' = `b1'[1,2...]
+		matrix `vv' = `s1'[2...,2...]
+	}
+	if inlist("`agg'","event")  {
+		tempname bb vv
+		matrix `bb' = `b1'[1,3...]
+		matrix `vv' = `s1'[3...,3...]
+	}
+	
 	return matrix table = rtb
 	return matrix b `b1'
-	return matrix  V `s1'
+	return matrix V `s1'
+	capture return matrix bb `bb'
+	capture return matrix vv `vv'
 	return local agg `agg'
   	if "`wboot'"!="" {
 		return matrix cband `cband'
@@ -470,12 +484,12 @@ void makerif2(string scalar rifgt_ , rifwt_ , agg,
 				coleqnm=coleqnm+sprintf(" G%s",strofreal(glvl[i]))
 				ag_rif = rifgt[.,ind_gt]
 				ag_wt  = rifwt[.,ind_gt]
-				sumwgt = sumwgt, rowsum(ag_wt):/rowsum(ag_wt:!=0)
+				sumwgt = sumwgt, rowsum(ag_wt):/cols(ag_wt)
 				aux = aux, aggte(ag_rif, ag_wt)
 			}
 		}
 		_editmissing(sumwgt,0)
-		aux = aggte(aux, sumwgt), aux
+		aux = aggte(aux,sumwgt ), aux
 		
 		// get table elements		
 		make_tbl(aux ,bb,VV,clvar_,wboot, cband_,ci, reps, wbtype, citype)
@@ -509,12 +523,13 @@ void makerif2(string scalar rifgt_ , rifwt_ , agg,
 			if (flag==1) {
 				ag_rif = rifgt[.,ind_gt]
 				ag_wt  = rifwt[.,ind_gt]
-				sumwgt = sumwgt, rowsum(ag_wt):/rowsum(ag_wt:!=0)
+				///sumwgt = sumwgt, rowsum(ag_wt):/cols(ag_wt)
  				aux = aux, aggte(ag_rif, ag_wt)
  			}
 		}
-		_editmissing(sumwgt,0)
-		aux = aggte(aux, sumwgt), aux		
+		///_editmissing(sumwgt,0)
+		aux = aggte(aux, J(rows(aux),cols(aux),1) ), aux
+//		aux = aggte(aux, sumwgt), aux		
 		// get table elements		
 		make_tbl(aux ,bb,VV,clvar_,wboot, cband_,ci, reps, wbtype, citype)
 	}
@@ -553,14 +568,19 @@ void makerif2(string scalar rifgt_ , rifwt_ , agg,
 			if (flag==1) {
 				ag_rif = rifgt[.,ind_gt]
 				ag_wt  = rifwt[.,ind_gt]			
-				sumwgt = sumwgt, rowsum(ag_wt):/rowsum(ag_wt:!=0)
+				//sumwgt = sumwgt, rowsum(ag_wt):/rowsum(ag_wt:!=0)
 				aux    = aux, aggte(ag_rif, ag_wt )
 				iit    = iit , evnt_lst[h]>=0
 			}
 		}
-		_editmissing(sumwgt,0)
-		aux =   aggte(select(aux,iit:==0), select(sumwgt,iit:==0)), 
-				aggte(select(aux,iit)    , select(sumwgt,iit))    ,aux
+		//_editmissing(sumwgt,0)
+		//sumwgt = J(rows(aux),cols(aux),1)
+		
+		aux =  aggte(select(aux,iit:==0), J(rows(aux),cols(aux)-sum(iit),1) ),
+		       aggte(select(aux,iit)    , J(rows(aux),sum(iit),1) ), aux
+
+		///aux =   aggte(select(aux,iit:==0), select(sumwgt,iit:==0)), 
+		///		aggte(select(aux,iit)    , select(sumwgt,iit))    ,aux
 		// get table elements		
 		make_tbl(aux ,bb,VV,clvar_,wboot, cband_, ci, reps, wbtype, citype)
 	}

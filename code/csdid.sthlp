@@ -160,7 +160,7 @@ period first treated, across all cohorts.{p_end}
 {marker description}{...}
 {title:Description}
 
-{pstd}{cmd:csdid} implements the DiD with multiple periods estimator proposed by Callaway and Sant'Anna (2020). {p_end}
+{pstd}{cmd:csdid} implements the DiD with multiple periods estimator proposed by Callaway and Sant'Anna (2021). {p_end}
 
 {pstd}Internally, all 2x2 DiD estimates (ATTGT's) are obtained using -drdid-. Thus {cmd: csdid} works as a wrapper
 that determines all relevant designs and aggregates them. {p_end}
@@ -177,7 +177,7 @@ pretreatment characteristics.
 {p_end}
  
 {pstd}
-The intuition behind Callaway and Sant'Anna (2020) estimator is that in order to obtain consistent estimators for ATT's
+The intuition behind Callaway and Sant'Anna (2021) estimator is that in order to obtain consistent estimators for ATT's
 one should only use never-treated or not-yet treated units as controls. Otherwise, under heterogeneous treatment effects, 
 the parallel trends assumption will be violated, and the estimations of the effects could be severely biased.
 {p_end}
@@ -317,8 +317,8 @@ University of Georgia{p_end}
 "Semiparametric Difference-in-Differences Estimators." 
 {it:The Review of Economic Studies} 72 (1): 1–19.{p_end}
 
-{phang2}Callaway, Brantly and Sant'Anna, Pedro H. C. 2020. 
-"Difference-in-Differences with multiple time periods." 
+{phang2}Callaway, Brantly and Sant'Anna, Pedro H. C. 2021. 
+"Difference-in-Differences with multiple time periods." , 225(2):200-230.
 {it:Journal of Econometrics}.{p_end}
 
 {phang2}Sant’Anna, Pedro H. C., and Jun Zhao. 2020. 
@@ -342,9 +342,9 @@ Many thanks to Pedro and Brantly Callaway for helping to understand the inner wo
 
 {pstd}If you use this package, please cite:{p_end}
 
-{phang2}Callaway, Brantly, and Sant'Anna, Pedro H. C. 2020. 
-"Difference-in-Differences with multiple time periods." 
-{it:Journal of Econometrics}.{p_end}
+{phang2}Callaway, Brantly and Sant'Anna, Pedro H. C. 2021. 
+"Difference-in-Differences with multiple time periods.", 
+{it:Journal of Econometrics}, 225(2):200-230. {p_end}
 
 {phang2}Sant'Anna, Pedro H. C., and Jun Zhao. 2020. 
 "Doubly Robust Difference-in-Differences Estimators." 
