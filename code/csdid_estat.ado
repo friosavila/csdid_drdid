@@ -1,4 +1,8 @@
-*! v1.54 FRA adds Average Group, calendar and event
+*! v1.58 FRA Fix Group Averages
+
+* v1.56 FRA Fix pretrend so it returns R's
+* v1.55 FRA When there is no pretreat
+* v1.54 FRA adds Average Group, calendar and event
 * v1.53 FRA adds Average Group
 * v1.52 FRA add window to cevent. Censored averages.
 * v1.51 FRA add from to simple calendar and group
@@ -50,7 +54,12 @@ program csdid_pretrend, sortpreserve rclass
 	mata:csdid_pretrend("e(b_attgt)","e(V_attgt)","`e(glev)'","`e(tlev)'","`window'")
 	display "chi2(`r(df)') = " %10.4f `r(chi2)'
 	display "p-value  = " %10.4f `r(pchi2)'
+	return   scalar chi2  = `r(chi2)'
+	return   scalar pchi2 = `r(pchi2)'	
+	return   scalar df    = `r(df)'	
 end
+
+
 
 program clrreturn, rclass
         exit
@@ -273,6 +282,7 @@ program adde, eclass
 end
 
 program addr, rclass
+		return add
         return `0'
 end
 
@@ -318,43 +328,57 @@ void csdid_group(string scalar bb_, vv_, gl_, tl_, real scalar from){
 	}
 	 
 	real matrix r1, r2
+ 
 	r1 = (bw :* iii):/rowsum(bw :* iii)
 	r2 = (br :* iii):/rowsum(bw :* iii):-rowsum((br:*iii):*(bw:*iii)):/(rowsum(bw :* iii):^2)
 	r2 = r2:*iii
 	real matrix bbb, vvv
 	bbb=rowsum(br :* bw:*iii):/rowsum(bw :* iii)
  	vvv=makesymmetric((r1,r2)*v*(r1,r2)')
-
+	
 	//st_matrix("r_b_",bbb')
 	//st_matrix("r_V_",vvv)
 	
 	/// FOR EXTRA
-	real matrix rx1, rx2, rx3, xbb, xvv
-	rx1 = r1*0
-	rx2 = (iii):/rowsum(iii)
-	rx1= r1\rx1
-	rx2= r2\rx2
-	xbb=bbb\ (rowsum(bw :* iii):/rowsum(iii) )
-	xvv=makesymmetric((rx1,rx2)*v*(rx1,rx2)')
+	//real matrix rx1, rx2, rx3, xbb, xvv
+	//rx1 = r1*0
+	//rx2 = (iii):/rowsum(iii)
+	//rx1= r1\rx1
+	//rx2= r2\rx2
+	
+	//xbb=bbb\ (rowsum(bw :* iii):/rowsum(iii) )
+	rx1=rowsum(bw :* iii):/rowsum(iii)
+	rx1=rx1':/sum(rx1)
+	
+	xvv=makesymmetric((rx1)*vvv*(rx1)')
+	 
+	//xvv=makesymmetric((rx1,rx2)*v*(rx1,rx2)')
 	// sm for group N
-	real scalar sm
-	sm=rows(xvv)
-	iii=J(1,sm/2,1)
-	xbb=xbb'
-	br=xbb[1,1..sm/2]
-	bw=xbb[1,sm/2+1..sm]
+	///real scalar sm
+	///sm=rows(xvv)
+	///iii=J(1,sm/2,1)
+	///xbb=xbb'
+	//br=xbb[1,1..sm/2]
+	//bw=xbb[1,sm/2+1..sm]
 	
-	r1 = (bw :* iii):/rowsum(bw :* iii)
+	//r1 = (bw :* iii):/rowsum(bw :* iii)
 	//r1 = (iii:/rowsum(iii))
-	r2 = (br :* iii):/rowsum(bw :* iii):-rowsum((br:*iii):*(bw:*iii)):/(rowsum(bw :* iii):^2)
-	r2 = r2:*iii
+	//r2 = (br :* iii):/rowsum(bw :* iii):-rowsum((br:*iii):*(bw:*iii)):/(rowsum(bw :* iii):^2)
+	//r2 = r2:*iii
 	
-	xbb=rowsum(br :* bw:*iii):/rowsum(bw :* iii)
+	xbb=rx1*bbb
+	
+	//xbb
 	//xbb=rowsum(br :*iii):/rowsum(iii)
- 	xvv=makesymmetric((r1,r2)*xvv*(r1,r2)')
-	
+ 	//xvv=makesymmetric((r1,r2)*xvv*(r1,r2)')
+	 
 	bbb=xbb',bbb'
+	//bbb
 	vvv=blockdiag(xvv,vvv)
+	//vvv
+	_editmissing(vvv,0)
+	_editmissing(bbb,0)
+	
 	st_matrix("r_b_",bbb)
 	st_matrix("r_V_",vvv)
 	
@@ -442,6 +466,8 @@ void csdid_calendar(string scalar bb_, vv_, gl_, tl_, real scalar from){
 	
 	bbb=xbb',bbb'
 	vvv=blockdiag(xvv,vvv)
+	_editmissing(vvv,0)
+	_editmissing(bbb,0)
 	st_matrix("r_b_",bbb)
 	st_matrix("r_V_",vvv)
 	
@@ -529,7 +555,8 @@ void csdid_simple(string scalar bb_, vv_, gl_, tl_, real scalar from) {
  
 	bbb=rowsum(br :* bw:*ii):/rowsum(bw :* ii)
  	vvv=makesymmetric((r1,r2)*v*(r1,r2)')
-	
+	_editmissing(vvv,0)
+	_editmissing(bbb,0)
  	st_matrix("r_b_",bbb)
 	st_matrix("r_V_",vvv)
 }
@@ -664,6 +691,9 @@ vector ptreat(real matrix glvl, tlvl, b){
 	
 	bbb=xbb',bbb'
 	vvv=blockdiag(xvv,vvv)
+	
+	_editmissing(vvv,0)
+	_editmissing(bbb,0)
 	st_matrix("r_b_",bbb)
 	st_matrix("r_V_",vvv)
 	

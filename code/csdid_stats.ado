@@ -1,4 +1,6 @@
-*! v1.55 FRA Reports Group,calendar,event averages
+*! v1.57 FRA Group Agg. Using weights for ALL not some groups
+* v1.56 FRA When there is no pretreat
+* v1.55 FRA Reports Group,calendar,event averages
 * v1.55 FRA allows for more periods
 * v1.53 FRA add window to cevent. Censored averages.
 * v1.52 FRA changes how data is stored for csdid estat
@@ -9,6 +11,7 @@ program adde, eclass
 end
 
 program addr, rclass
+		return add
         return `0'
 end
 
@@ -489,6 +492,8 @@ void makerif2(string scalar rifgt_ , rifwt_ , agg,
 			}
 		}
 		_editmissing(sumwgt,0)
+		//# Bookmark #1 Uncertain if this is the best way to fix this, but right now gives best results
+		sumwgt=J(rows(sumwgt),1,colsum(sumwgt))
 		aux = aggte(aux,sumwgt ), aux
 		
 		// get table elements		
@@ -578,7 +583,8 @@ void makerif2(string scalar rifgt_ , rifwt_ , agg,
 		
 		aux =  aggte(select(aux,iit:==0), J(rows(aux),cols(aux)-sum(iit),1) ),
 		       aggte(select(aux,iit)    , J(rows(aux),sum(iit),1) ), aux
-
+		/// NEW line for Missing 
+		_editmissing(aux,0)
 		///aux =   aggte(select(aux,iit:==0), select(sumwgt,iit:==0)), 
 		///		aggte(select(aux,iit)    , select(sumwgt,iit))    ,aux
 		// get table elements		
@@ -655,7 +661,6 @@ void clusterse(real matrix iiff, cl, V, real scalar cln){
 }
 
  
-
 real colvector aggte(real matrix attg, wgt){
 	real scalar atte, mn_attg, mn_wgt
 	real vector wgtw, attw
@@ -671,7 +676,6 @@ real colvector aggte(real matrix attg, wgt){
 	return(rowsum(r1):+rowsum(r2):-rowsum(r3):+atte)
     
 }
-
 
 /////////////////////////////////////////////////////////
 real matrix mboot_did(real matrix rif, mean_rif, real scalar reps, bwtype) {

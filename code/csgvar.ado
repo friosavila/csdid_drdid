@@ -1,7 +1,7 @@
 *! v1.1 Corrects typo
 * v1 Creates gvar-Cohort/group variable
 *program drop _gcsgvar
-program _gcsgvar, sortpreserve
+program csgvar, sortpreserve
 	syntax newvarname =/exp [if] [in], tvar(varname) ivar(varname)
 	local exp = subinstr("`exp'","(","",.)
 	local exp = subinstr("`exp'",")","",.)

@@ -58,6 +58,9 @@ The default is using never treated only. If there are no {it:never treated} obse
 {synopt:{opt long}}For periods before treatment, this option requests the estimation of Long gaps, rather 
 than short-gaps.{p_end}
 
+{synopt:{opt long2}}For periods before treatment, this option requests the estimation of Long gaps, rather 
+than short-gaps. This is similar to base universal. (inverse sign from long){p_end}
+
 {synoptline}
 {syntab:{bf: Estimation Method} }
 
