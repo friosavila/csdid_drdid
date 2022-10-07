@@ -1,4 +1,5 @@
-*! v1.58 FRA Fix Group Averages
+*! v1.6 FRA Changes how it event looks
+* v1.58 FRA Fix Group Averages
 
 * v1.56 FRA Fix pretrend so it returns R's
 * v1.55 FRA When there is no pretreat
@@ -66,7 +67,7 @@ program clrreturn, rclass
 end
 
 program csdid_attgt,  rclass sortpreserve
-	syntax, [estore(name) esave(name) replace plot post * ]
+	syntax, [estore(name) esave(name) replace plot post level(passthru) * ]
  	*display "ATT GT with WBOOT SE (alternative method)"
 	tempname lastreg
 	tempvar b V table
@@ -83,7 +84,7 @@ program csdid_attgt,  rclass sortpreserve
 	adde local agg     attgt
 	if "`estore'"!="" est store `estore'
 	if "`esave'" !="" est save  `esave', `replace'
-	_coef_table
+	_coef_table, `level'
 	matrix rtb=r(table)
 	if "`post'"=="" qui:est restore `lastreg'
 	
@@ -96,7 +97,7 @@ end
 	
  
 program csdid_simple,  rclass sortpreserve
-	syntax, [estore(name) esave(name) replace from(int 0) post *]
+	syntax, [estore(name) esave(name) replace from(int 0) post level(passthru) *]
  	display "Average Treatment Effect on Treated"
 	mata:csdid_simple("e(b_attgt)","e(V_attgt)","`e(glev)'","`e(tlev)'", `from')
 	tempname lastreg
@@ -114,7 +115,7 @@ program csdid_simple,  rclass sortpreserve
 	adde local agg     simple
 	if "`estore'"!="" est store `estore'
 	if "`esave'" !="" est save  `esave', `replace'
-	_coef_table
+	_coef_table, `level'
 	matrix rtb=r(table)
 
 	if "`post'"=="" qui:est restore `lastreg'
@@ -126,7 +127,7 @@ program csdid_simple,  rclass sortpreserve
 end
 
 program csdid_group, sortpreserve rclass
-	syntax, [estore(name) esave(name) replace plot from(int 0) post *]
+	syntax, [estore(name) esave(name) replace plot from(int 0) post level(passthru) *]
   	display "ATT by group"
 	mata:csdid_group("e(b_attgt)","e(V_attgt)","`e(glev)'","`e(tlev)'",`from')
 	tempname lastreg
@@ -142,7 +143,7 @@ program csdid_group, sortpreserve rclass
 	adde local agg     group
 	if "`estore'"!="" est store `estore'
 	if "`esave'" !="" est save  `esave', `replace'
-	_coef_table
+	_coef_table, `level'
 	matrix rtb=r(table)
 	if "`post'"=="" qui:est restore `lastreg'
 
@@ -159,7 +160,7 @@ program csdid_group, sortpreserve rclass
 end
 
 program csdid_calendar, sortpreserve rclass
-	syntax, [estore(name) esave(name) replace plot from(int 0) post * ]
+	syntax, [estore(name) esave(name) replace plot from(int 0) post level(passthru) * ]
   	display "ATT by Calendar Period"
 	mata:csdid_calendar("e(b_attgt)","e(V_attgt)","`e(glev)'","`e(tlev)'",`from')
 	tempname lastreg
@@ -175,7 +176,7 @@ program csdid_calendar, sortpreserve rclass
 	adde local agg     calendar
 	if "`estore'"!="" est store `estore'
 	if "`esave'" !="" est save  `esave', `replace'
-	_coef_table
+	_coef_table, `level'
 	matrix rtb=r(table)
 	
 	if "`post'"=="" qui:est restore `lastreg'
@@ -196,7 +197,7 @@ end
  
 program csdid_event, sortpreserve rclass
 	syntax, [estore(name) esave(name) replace window(str) balance(int 0) ///
-			 post * ]
+			 post level(passthru) * ]
 			 
    	display "ATT by Periods Before and After treatment"
 	display "Event Study:Dynamic effects"
@@ -205,7 +206,10 @@ program csdid_event, sortpreserve rclass
 		local window `r(numlist)'
 	}
  
-	mata:csdid_event("e(b_attgt)","e(V_attgt)","`e(glev)'","`e(tlev)'","`window'", `balance')
+	local lg = 0
+	if 	"`e(typebase)'"=="long2" local lg = 1
+	
+	mata:csdid_event("e(b_attgt)","e(V_attgt)","`e(glev)'","`e(tlev)'","`window'", `balance', `lg')
 	tempname lastreg
 	tempvar b V table
 	matrix `b' = r_b_
@@ -219,7 +223,7 @@ program csdid_event, sortpreserve rclass
 	adde local agg     event
 	if "`estore'"!="" est store `estore'
 	if "`esave'" !="" est save  `esave', `replace'
-	_coef_table
+	_coef_table, `level'
 	matrix rtb=r(table)
 
 	if "`post'"=="" qui:est restore `lastreg'
@@ -242,7 +246,7 @@ end
 
 program csdid_cevent, sortpreserve rclass
 	syntax, [estore(name) esave(name) replace window(str) balance(int 0) ///
-			 post * ]
+			 level(passthru) post * ]
 	
 	numlist "`window'", min(2) max(2) sort integer
 	local window `r(numlist)'
@@ -265,7 +269,7 @@ program csdid_cevent, sortpreserve rclass
 	adde local agg     cevent
 	if "`estore'"!="" est store `estore'
 	if "`esave'" !="" est save  `esave', `replace'
-	_coef_table
+	_coef_table, `level'
 	matrix rtb=r(table)
 
 	if "`post'"=="" qui:est restore `lastreg'
@@ -596,7 +600,7 @@ vector ptreat(real matrix glvl, tlvl, b){
 	return(aux)
 }
  
- void csdid_event(string scalar  bb_, vv_, gl_, tl_, wnw, real scalar bal ){
+ void csdid_event(string scalar  bb_, vv_, gl_, tl_, wnw, real scalar bal , lng){
     real matrix b, v , ii, jj, glvl, tlvl, wndw, trtp
 	glvl = strtoreal(tokens(gl_));tlvl = strtoreal(tokens(tl_))	
 	b=st_matrix(bb_);v=st_matrix(vv_)
@@ -607,6 +611,8 @@ vector ptreat(real matrix glvl, tlvl, b){
 	
 	real matrix evnt_lst
 	evnt_lst=event_list(glvl,tlvl,wndw)
+	
+	
  	real scalar k, i, j, h, flag
 	string scalar coleqnm
 	ii=(1..(cols(glvl)*cols(tlvl))),(cols(glvl)*cols(tlvl)):+(1..cols(glvl))#J(1,cols(tlvl),1)
@@ -625,6 +631,10 @@ vector ptreat(real matrix glvl, tlvl, b){
 	iit=J(1,0,.)
 	/// THINK HOW TO ID Possitive Events. 
 	/// 
+		if (lng==1) {
+			lng=max( evnt_lst[1,2..length(evnt_lst)]-evnt_lst[1,1..(length(evnt_lst)-1)] )
+		}
+		
 	for(h=1;h<=cols(evnt_lst);h++){
 		k=0
 		flag=0
@@ -637,7 +647,7 @@ vector ptreat(real matrix glvl, tlvl, b){
 					//ag_wt =ag_wt , rifwt[.,i]
 					ii[k] = 1						
 					if (flag==0) {
-						if (evnt_lst[h]< 0) coleqnm=coleqnm+sprintf(" Tm%s" ,strofreal(abs(evnt_lst[h])))
+						if (evnt_lst[h]< 0) coleqnm=coleqnm+sprintf(" Tm%s" ,strofreal(abs(evnt_lst[h]-lng)))
 						if (evnt_lst[h]==0) coleqnm=coleqnm+" Tp0"
 						if (evnt_lst[h]> 0) coleqnm=coleqnm+sprintf(" Tp%s",strofreal(abs(evnt_lst[h])))
 					}

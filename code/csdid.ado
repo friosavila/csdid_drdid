@@ -1,11 +1,16 @@
-*! check how to a) find Min delta and b) apply delta to model
-** NOTE when Panel is unbalanced (check this somehow.)
-** there could be two solutions.
-** 1 Using strong balance 
-** 2 use semi balance (whenever att_gt exists)
-** 3 use weak balance/crossection with cluster.
-** Ultimate check. Do thestatistics Once.
-*! v1.57  by FRA. Takes Pretrend from AGG NOT ALLOWED
+ 
+* Next step Integrate all into csdid.mata <- so Do not need to play with many files
+*! v1.7  by FRA. Changes on Datacheks. This should avoid time gaps problems.
+* Adds asinr for pretreatmetn
+* adds version
+* Need to add Checks for Covariates and variables.
+* v1.6  by FRA. Changes how agg looks
+* v1.58  by FRA. Dropping binit. Problems with drimp
+* v1.58  by FRA. adding base info
+* v1.57  by FRA. change default to dripw from drimp. More stable
+* Also corrects agg(event)
+* Does not create Unecessary RIFS
+* v1.57  by FRA. Takes Pretrend from AGG NOT ALLOWED
 * v1.56  by FRA. bug for NOT YET, 2021 ref
 * v1.55  by FRA. Allows for more periods
 * v1.53  by FRA. changes e(gtt). THis give sdetailed sample 
@@ -91,9 +96,70 @@ syntax , [mydots(integer 10) maxdots(int 50) bad]
 	}
 end
 
+mata:
+// This should check all combinations for Tvar and Gvar
+// Brute force approach to fix missing data
+void data_check(string scalar tvar,
+				string scalar gvar,
+				string scalar touse){
+					real matrix tgvar , ttvar, ggvar, dtvar
+					st_view(ttvar=.,.,tvar,touse)
+					st_view(ggvar=.,.,gvar,touse)
+ 					// Get full set of tvar gvar
+										
+					ttvar = uniqrows(ttvar)'
+					ggvar = uniqrows(ggvar)'
+					st_local("no_notyet",strofreal(sum(ggvar:==0)))
+					ggvar = select(ggvar,ggvar:>0) 
+ 					// get MIN time delta
+	
+					dtvar = min(ttvar[2..cols(ttvar)]:-ttvar[1..cols(ttvar)-1])
+ 					// Pre treatment
+					tgvar = ggvar:-dtvar
+ 					// get all possible Times	
+					ttvar  = range(min(ttvar),max(ttvar),dtvar)'
+					
+					//
+					st_local("mintime",strofreal(min(ttvar)))
+					st_local("time0"  ,strofreal(min(ttvar)))
+					st_local("gdelta" ,strofreal(min(dtvar)))
+					st_local("mingvar",strofreal(min(ggvar)))
+					st_local("maxgvar",strofreal(max(ggvar)))
+					st_local("glev" ,invtokens(strofreal(ggvar)))
+					st_local("tlev" ,invtokens(strofreal(ttvar[2..cols(ttvar)])))
+					st_local("tlev1",invtokens(strofreal(ttvar)))
+					st_local("precheck",strofreal(max(ggvar)))
+
+				}
+end
 
 program csdid, sortpreserve eclass
         version 14
+		
+		///version checker
+		
+		syntax [anything(everything)], [* version]
+
+		if  "`version'"!="" {
+			display "version: 1.7"
+			addr scalar version = 1.7
+			exit
+		}
+		
+		capture drdid, version
+		if _rc!=0 {
+			display in red "Program DRDID is outdated, or not installed. "
+			display in red "Please install ssc install drdid"
+			*exit 101
+		}
+		if _rc==0 {
+			if r(version)<1.7 			display in red "Program DRDID is outdated. Please update" as text
+			*exit 101
+		}
+
+
+		////
+		
         if replay() {
                 if `"`e(cmd)'"' != "csdid" { 
                         error 301
@@ -107,11 +173,7 @@ program csdid, sortpreserve eclass
 				easter_egg
 		}
 		
-		capture which drdid
-		if _rc!=0 {
-			display in red "Program drdid.ado not found. Make sure you have a copy of it installed." as text
-			exit 101
-		}
+		
 		csdid_r `0'
 		
         *ereturn local cmdline `"drdid `0'"'
@@ -130,7 +192,6 @@ end
                 _S_Me_thod
                 local omodel "`s(omodel)'"
                 local tmodel "`s(tmodel)'"
-
                 
                 if ("`e(method)'"!="all") {
                         _coef_table_header, title(Difference-in-difference with Multiple Time Periods) 
@@ -314,6 +375,7 @@ program csdid_r, sortpreserve eclass
 							from(int 0) 		    /// for aggregations
 							long long2              /// to allow for "long gaps"
 							dryrun					/// for testing
+							asinr					/// For pretreatment
 							]  // This allows other estimators
 				
 	marksample touse
@@ -345,12 +407,16 @@ program csdid_r, sortpreserve eclass
 	}
 	***********************************************
 	if "`method'"=="" {
-		local method drimp
+		local method dripw
+		if "`xvar'"=="" {
+			local method reg
+		}
 	}
 	else if !inlist("`method'","drimp","dripw","reg","ipw","stdipw") {
 		display as error "Method `method' not allowed"
 	}
-	
+	** Default. If no controls, use reg
+		
 	if "`seed'"!="" set seed `seed'
 
 	
@@ -369,21 +435,46 @@ program csdid_r, sortpreserve eclass
 		exit 10
 	}
 	
+	/// added data check
+	qui:mata:data_check("`time'","`gvar'","`touse'")
+	
+	// verify not yet	
 	if "`tyet'"=="" {
-		qui:count if `touse' & `gvar'==0
-		if r(N)==0 {
+		// if never treated	
+		if `no_notyet'==0 {
 			local tyet notyet
 			display "No never treated observations found. Using Not yet treated data"
 		}	
+		else {
+			sum `time' if `touse' & `gvar'==0,  meanonly
+			qui:replace `touse'=0 if `time'>`r(max)'
+		}
 	}
 	
+	/// Added Restrictions to sample
+	*!! Stop here. How to restrict from going over a group that isnt going to estimate anything?
+	if "`tyet'"!="" {
+		// if never treated	
+		sum `time' if `touse' & `gvar'==0, meanonly
+		local tt_max = r(max)
+		sum `gvar' if `touse' , meanonly
+		local gg_max = r(max)
+		
+		qui:replace `touse'=0 if `time'>`gg_max' & `time'>`tt_max'
+	}
+	
+	qui:mata:data_check("`time'","`gvar'","`touse'")
+	
 	** checking for Min gvar being larger than min time
+	/*
+	Now done with data_check
 	qui:sum `time' if `touse', meanonly 
 	local mintime=r(min)
 	qui:sum `gvar' if `touse' & `gvar'>0, meanonly 
 	local mingvar=r(min)
 	local maxgvar=r(max)
-		
+	*/	
+	
 	if `maxgvar'<=`mintime' {
 		display "Gvar max value is `maxgvar' and there are no periods available before that treatment"
 		display "Verify that Gvar is correctly defined"
@@ -391,17 +482,17 @@ program csdid_r, sortpreserve eclass
 	}
 	
 	if `mintime'>=`mingvar' {
-		display "Units always treated found. These will be excluded"
-		qui:replace `touse'=0 if (`gvar'<=`mintime') & (`gvar'>0) & `touse'
+		display "Units always treated found. These will be ignored"
+		*qui:replace `touse'=0 if (`gvar'<=`mintime') & (`gvar'>0) & `touse'
 	}
 	
 	
 	** determine time0
-	if "`time0'"=="" {
+	/*if "`time0'"=="" {
 	    qui:sum `time' if `touse'
 		local time0 `r(min)'
 	}
-	
+	*/
 	** Check if panel is Full Balance
 	qui {
 	    // Only if panel
@@ -446,19 +537,21 @@ program csdid_r, sortpreserve eclass
 	tempname gtt
 	
 *	qui:gen byte `tr'=`gvar'!=0 if `gvar'!=.
-	qui:levelsof `gvar' if `gvar'>0       & `touse', local(glev)
-	qui:levelsof `time' if `time'>`time0' & `touse', local(tlev)
+	*qui:levelsof `gvar' if `gvar'>0       & `touse', local(glev)
+	*qui:levelsof `time' if `time'>`time0' & `touse', local(tlev)
 	
 	** Checks If Gvar is ever untreated
-	if `:word 1 of `glev'' < `:word 1 of `tlev'' {
+	if `precheck'==1 {
 	    display in red "All observations require at least 1 not treated period"
 		display in red "See cross table below, and verify All Gvar have at least 1 not treated period"
 		tab `time' `gvar' if `touse'
 		error 1
 	}
+	
  	tempname b v
 	tempvar gsel
 	tempvar cs_sample
+	capture qui:gen byte _blank_=.
 	qui:gen byte `cs_sample'=0
 ////////////////////////////////////////////////////////////////////////////////	
 	if "`long'`long2'"=="" {
@@ -470,19 +563,25 @@ program csdid_r, sortpreserve eclass
 			    ** This implements the Never treated
 					capture drop `gsel'
 					qui:gen byte `gsel'=inlist(`gvar',0,`i') if  `touse'
+					
 					if "`tyet'"!="" {
-						qui:replace `gsel'=1 if (`gvar'==0 | `gvar'==`i' | (`gvar'> `i' & `gvar' >`j' )) & `touse'
+						if "`asinr'"=="" qui:replace `gsel'=1 if (`gvar'==0 | `gvar'==`i' | (`gvar'> `i' & `gvar' >`j' )) & `touse'
+						if "`asinr'"!="" {
+							if `j'< `i' qui:replace `gsel'=1 if (`gvar'==0 | `gvar'==`i' | `gvar' >`j' ) & `touse'					
+							if `j'>=`i' qui:replace `gsel'=1 if (`gvar'==0 | `gvar'==`i' | (`gvar'> `i' & `gvar' >`j' )) & `touse'					
+						}	
 					}
+					
 					capture drop `tr'
 					qui:gen byte `tr'=(`gvar'==`i') if `touse'
 					
-
 					qui:capture:drdid `varlist' if `gsel'     ///
 								 & inlist(`time',`time1',`j') ///
 								 & `touse' [`weight'`exp'],   ///
 								ivar(`ivar') time(`time') treatment(`tr') ///
-								`method' stub(__) replace `dryrun' binit(`bii' )
-					tempname bii
+								`method' stub(__) replace `dryrun' 
+								*binit(`bii' )
+					*tempname bii
 					
 					
 					if _rc == 1 {
@@ -496,43 +595,51 @@ program csdid_r, sortpreserve eclass
 						qui:replace `cs_sample'=e(sample) if `cs_sample'==0		
 						qui:count if e(sample)==1 & `tr'==1
 						matrix `gtt'=nullmat(`gtt')\[`i',min(`time1',`j'),max(`time1',`j'),_rc,e(N),`=e(N)-r(N)',r(N)]
-						matrix `bii'=e(iptb)
+						*matrix `bii'=e(iptb)
 						*matrix list `bii'
 					}
+					
 					if _rc!=0 {
 						local	bad bad
 						matrix `gtt'=nullmat(`gtt')\[`i',min(`time1',`j'),max(`time1',`j'),_rc,.,.,.]
 					}
 					
 					sdots, mydots(`mydots') `bad'
+					
 					local bad
 					local eqname `eqname' g`i'
 					local colname `colname'  t_`time1'_`j'
+					
 					capture drop _g`i'_`time1'_`j'
 					
 				    capture   confirm variable __att
-					if 	_rc==111	qui:      gen _g`i'_`time1'_`j'=.
-					else 		    ren __att     _g`i'_`time1'_`j'
+					if 	_rc==111	{
+						local vlabrif `vlabrif'       _blank_
+						local rifvar `rifvar'         _blank_
+						if `j'<`i' local time1 = `j'
+					}
+					else {						
+					    ren __att     _g`i'_`time1'_`j'
+						local vlabrif `vlabrif' _g`i'_`time1'_`j'
+						if `j'<`i' local time1 = `j'					
+						local rifvar   `rifvar' _g`i'_`time1'_`j'
+					}
 					
-					local vlabrif `vlabrif' _g`i'_`time1'_`j'
-					if `j'<`i' local time1 = `j'					
-					
-				local rifvar `rifvar' _g`i'_`time1'_`j'
 			}
 		}
 	}
 ////////////////////////////////////////////////////////////////////////////////	
 	if "`long'`long2'"!="" {
 	** times goes from t0	
-	qui:levelsof `time' if `time'>=`time0' & `touse', local(tlev)
+	*qui:levelsof `time' if `time'>=`time0' & `touse', local(tlev)
+	
  		foreach i of local glev {		
-		qui:sum `time' if `time'<`i' & `touse', meanonly
-		local time1 = r(max)
+		*qui:sum `time' if `time'<`i' & `touse', meanonly
+		local time1 = `i'-`gdelta'
 				
-		    foreach j of local tlev {
+		    foreach j of local tlev1 {
 ******************************************
-			if `time1'!=`j' {
-				
+			if `time1'!=`j' {				
 				
 				local mydots=`mydots'+1
 				* Stata quirk: `notyet' is called `tyet' because "no" is removed
@@ -540,7 +647,11 @@ program csdid_r, sortpreserve eclass
 					capture drop `gsel'
 					qui:gen byte `gsel'=inlist(`gvar',0,`i') if  `touse'
 					if "`tyet'"!="" {
-						qui:replace `gsel'=1 if (`gvar'==0 | `gvar'==`i' | (`gvar'> `i' & `gvar' >`j' )) & `touse'
+						if "`asinr'"=="" qui:replace `gsel'=1 if (`gvar'==0 | `gvar'==`i' | (`gvar'> `i' & `gvar' >`j' )) & `touse'
+						if "`asinr'"!="" {
+							if `j'< `i' qui:replace `gsel'=1 if (`gvar'==0 | `gvar'==`i' | `gvar' >`j' ) & `touse'					
+							if `j'>=`i' qui:replace `gsel'=1 if (`gvar'==0 | `gvar'==`i' | (`gvar'> `i' & `gvar' >`j' )) & `touse'					
+						}	
 					}
 					capture drop `tr'
 					qui:gen byte `tr'=(`gvar'==`i') if `touse'
@@ -550,8 +661,9 @@ program csdid_r, sortpreserve eclass
 								 & inlist(`time',`time1',`j') ///
 								 & `touse' [`weight'`exp'],   ///
 								ivar(`ivar') time(`time') treatment(`tr') ///
-								`method' stub(__) replace `dryrun' binit(`bii',skip)
-					tempname bii			
+								`method' stub(__) replace `dryrun' noisily
+								*binit(`bii',skip)
+								*tempname bii			
 											 
 					
 					if _rc == 1 {
@@ -565,7 +677,7 @@ program csdid_r, sortpreserve eclass
 						qui:replace `cs_sample'=e(sample) if `cs_sample'==0		
 						qui:count if e(sample)==1 & `tr'==1
 						matrix `gtt'=nullmat(`gtt')\[`i',min(`time1',`j'),max(`time1',`j'),_rc,e(N),`=e(N)-r(N)',r(N)]
-						matrix `bii'=e(iptb)
+						*matrix `bii'=e(iptb)
 					}
 					if _rc!=0 {
 						local	bad bad
@@ -575,32 +687,42 @@ program csdid_r, sortpreserve eclass
 					sdots, mydots(`mydots') `bad'
 					local bad
 					local eqname `eqname' g`i'
+					
 					if `time1'<`j' {
 						local colname `colname'  t_`time1'_`j'
 						capture drop _g`i'_`time1'_`j'
 						capture   confirm variable __att
-						if 	_rc==111	qui:      gen _g`i'_`time1'_`j'=.
-						else 		    ren __att     _g`i'_`time1'_`j'
-						local vlabrif `vlabrif'       _g`i'_`time1'_`j'
-						local rifvar `rifvar'         _g`i'_`time1'_`j'
+						if 	_rc==111	{
+								*qui:      gen _blank_=.
+								local vlabrif `vlabrif'       _blank_
+								local rifvar `rifvar'         _blank_
+						}
+						else {
+							    ren __att     _g`i'_`time1'_`j'
+								local vlabrif `vlabrif'       _g`i'_`time1'_`j'
+								local rifvar `rifvar'         _g`i'_`time1'_`j'
+						}
 					}
 					else {
 						local colname `colname'  t_`j'_`time1'
 						capture drop _g`i'_`j'_`time1'
 						capture   confirm variable __att
-						if 	_rc==111	qui:      gen _g`i'_`j'_`time1'=.
-						else 		    ren __att     _g`i'_`j'_`time1'
-						if "`long2'"!="" qui:replace _g`i'_`j'_`time1'=-_g`i'_`j'_`time1'
-						local vlabrif `vlabrif' _g`i'_`j'_`time1'
-						local rifvar `rifvar' 	_g`i'_`j'_`time1'
+						if 	_rc==111 {
+							*qui:      gen _blank_=.
+							local vlabrif `vlabrif'       _blank_
+							local rifvar `rifvar'         _blank_
+						}
+						else {
+							ren __att     _g`i'_`j'_`time1'
+							if "`long2'"!="" qui:replace _g`i'_`j'_`time1'=-_g`i'_`j'_`time1'
+							local vlabrif `vlabrif' _g`i'_`j'_`time1'
+							local rifvar `rifvar' 	_g`i'_`j'_`time1'
+						}							
 					}
 			}
 ******************************************				
 			}
-		}
-	** return to traditional name
-	qui:levelsof `time' if `time'>`time0' & `touse', local(tlev)
-
+		}	
 	}
 		** names for Weights To be changed
 		
@@ -619,7 +741,7 @@ program csdid_r, sortpreserve eclass
 			if "`exp'"!="" clonevar `wgtt'`exp'
 			else gen byte `wgtt'=1
 			qui:keep if `touse'
-			qui:keep `ivar' `time' `gvar' `vlabrif' `wgtt' `cluster'
+			qui:keep `ivar' `time' `gvar' `vlabrif' `wgtt' `cluster' _blank_
 			local oivar `ivar'
 			if "`ivar'"=="" {
 			   	qui:gen double ivar=_n
@@ -627,7 +749,9 @@ program csdid_r, sortpreserve eclass
 				local ivar ivar
 			}
 			
-			collapse   `time'  `gvar' `vlabrif' `wgtt' `cluster', by(`ivar' ) fast
+			local svlist `time'  `gvar' `vlabrif' `wgtt' `cluster'
+			local svlist = subinstr("`svlist'","_blank_","",.)
+			collapse `svlist' _blank_ , by(`ivar' ) fast
 			ren `wgtt' __wgt__
 			label var  __wgt__  "Weight Variable"
 			*qui:levelsof `gvar' if `gvar'!=0, local(gglev) 
@@ -636,9 +760,17 @@ program csdid_r, sortpreserve eclass
 				foreach j of local tlev {
 					local kc=`kc'+1
 					local rvl:word `kc' of `vlabrif'
-					qui:gen double w`i'_`j'=0
-					qui:replace w`i'_`j'=1 if (`rvl'!=.) & (`gvar'==`i') 
-					local lvl_gvar `lvl_gvar' w`i'_`j'
+					
+					if "`rvl'"!="_blank_" {
+											
+						qui:gen double w`i'_`j'=0
+						qui:replace w`i'_`j'=1 if (`rvl'!=.) & (`gvar'==`i') 
+						local lvl_gvar `lvl_gvar' w`i'_`j'
+					
+					}
+					else {
+						local lvl_gvar `lvl_gvar' _blank_
+					}
 				}
 			}
 			*** Organizing all data.
@@ -671,6 +803,7 @@ program csdid_r, sortpreserve eclass
 			*note: eqname  `eqname'
 			
 			note: cmd  csdid
+			note: typebase  `long2'`long'
 			
 			/// parsing notes.
 			forvalues i = 3/8 {
@@ -714,14 +847,14 @@ program csdid_r, sortpreserve eclass
 				if "`citype'"=="uniform"   local citp = 1
 				if "`citype'"=="pointwise" local citp = 2
 			}
-			
+			local l2 = 0
+			if "`long2'"!="" local l2 = 1	
 			noisily mata: makerif2("`rifgt'" , "`rifwt'","__wgt__","`agg'",  ///
 								  "`time0'","`glvls'","`tlvls'", ///
 									"`b1'",  /// `b2' `b3' `b4' `b5' `b6'
 									"`s1'",  ///  `s2' `s3' `s4' `s5' `s6'
 									"`clvar' ","`wboot' ", "`cband'", /// 
-									`ci', `reps', `wbtype', `citp',`from')
-									
+									`ci', `reps', `wbtype', `citp',`from', `l2')				
 			** Time0 `time0'		
 			if "`saverif'"!="" {
 			    save `saverif', replace
@@ -729,6 +862,7 @@ program csdid_r, sortpreserve eclass
 		restore
 		
 		capture drop `vlabrif'
+		capture drop _blank_
 ////////////////////////////////////////////////////////////////////////////////
 	if "`agg'"=="attgt" {
 	
@@ -771,6 +905,8 @@ program csdid_r, sortpreserve eclass
 	ereturn scalar neqr	=	`neqr'
 	ereturn local riffile	`saverif'
 	ereturn local method 	`method'
+	if "`long'`long2'"!="" ereturn local typebase	`long'`long2'
+	else 				   ereturn local typebase	default
 	
 	if "`ocluster'"!="" {
 		ereturn local clustvar 	`ocluster'
@@ -790,7 +926,7 @@ program csdid_r, sortpreserve eclass
 		ereturn local citype  `citype'
 	}
 		    
-		
+	 	
 	Display, level(`level')
 	display "Control: `e(control_group)'" 
 	display _n "See Callaway and Sant'Anna (2021) for details"
@@ -811,16 +947,26 @@ end
 
 
 mata:
- vector event_list(real matrix glvl, tlvl){
- 	real matrix toreturn
+ vector event_list(real matrix glvl, tlvl,window){
+ 	real matrix toreturn, toreturn2
 	real scalar i,j
 	toreturn=J(1,0,.)
+	toreturn2=J(1,0,.)
 	for(i=1;i<=cols(glvl);i++) {
 		for(j=1;j<=cols(tlvl);j++) {
-			toreturn=toreturn,(tlvl[j]-glvl[i])
+			toreturn=toreturn,(tlvl[j] -glvl[i])
 		}
 	}
-	return(uniqrows(toreturn')')
+	toreturn=uniqrows(toreturn')'
+	 
+	if (cols(window)==0) return(toreturn)
+	else {
+	    for(i=1;i<=cols(toreturn);i++){
+		    if  ( (toreturn[i]>=window[1]) & (toreturn[i]<=window[2]) )    toreturn2=toreturn2,toreturn[i]
+		}
+		 
+		return(toreturn2)
+	}
  }
 // Next task. 
 // amek all elements separete RIF_siple RIF event, etc
@@ -828,16 +974,18 @@ mata:
 		
 void makerif2(string scalar rifgt_ , rifwt_ , wgt_, agg, 
 				time0, glvl_, tlvl_, bb_, ss_, clvar_, wboot_ , cband, 
-				real scalar ci, reps, wbtype, citype, from ) {	
+				real scalar ci, reps, wbtype, citype, from, real scalar lng ) {	
     real matrix rifgt , rifwt, wgt, t0, glvl, tlvl
 	real scalar i,j,k,h
 	rifgt	= st_data(.,rifgt_)
 	rifwt  	= st_data(.,rifwt_)
+	// Because of blanks we need to make it zero. Otherwise there is an error
+	_editmissing(rifwt,0)
 	wgt   	= st_data(.,wgt_)
 	wgt	  	= wgt:/mean(wgt)
 	rifwt	= rifwt:*wgt
 	rifwt	= rifwt:/rowsum(mean(rifwt))
-	wgt		=.
+ 	  
 	
 	/// pg here is just a dummy
 	// stp1 all together?? No
@@ -857,10 +1005,12 @@ void makerif2(string scalar rifgt_ , rifwt_ , wgt_, agg,
 	_editmissing(mean_y,0)
 	exp_factor = (rows(rifwt):/colnonmissing(rifwt))
 	rifwt      =rifwt:-mean_y
+	
 	_editmissing(rifwt,0)
 	_editmissing(exp_factor,0)
+	
 	rifwt      =rifwt:*exp_factor:+mean_y
-    st_store(.,tokens(rifgt_+" "+rifwt_),(rifgt,rifwt))
+	st_store(.,tokens(rifgt_+" "+rifwt_),(rifgt,rifwt))
 	/// Extra stuff 
 	t0   = strtoreal(tokens(time0))	
 	glvl = strtoreal(tokens(glvl_))	
@@ -940,31 +1090,38 @@ void makerif2(string scalar rifgt_ , rifwt_ , wgt_, agg,
 	if (agg=="group") {
 		// i groups j time
 		k=0
-		ind_wt=colsum(abs(rifgt))
-	
+		
 		aux    =J(rows(rifwt),0,.)
-		coleqnm=""
+		sumwgt =J(rows(rifwt),0,.)
+		coleqnm="GAverage"
+		ind_wt=colsum(abs(rifgt))
+
 		/// ag_wt=J(rows(rifwt),0,.)
 		for(i=1;i<=cols(glvl);i++) {
-		ind_gt=J(1,0,.)
-		
-		flag=0
+			ind_gt=J(1,0,.)
+		    flag=0
 			ag_rif=J(rows(rifwt),0,.)
 			for(j=1;j<=cols(tlvl);j++) {
 				k++
- 				if ( (tlvl[j]-glvl[i]>=from) & (ind_wt[k]!=0)) {
+ 				if ((tlvl[j]-glvl[i]>=from) & (ind_wt[k]!=0)) {
 					//ag_rif=ag_rif, rifgt[.,k]
 					flag=1
 					ind_gt=ind_gt,k
  				}
  			}
+			
 			if (flag==1)  {
 				coleqnm=coleqnm+sprintf(" G%s",strofreal(glvl[i]))
 				ag_rif = rifgt[.,ind_gt]
 				ag_wt  = rifwt[.,ind_gt]
- 				aux = aux, aggte(ag_rif, ag_wt)
-			}	
+				sumwgt = sumwgt, rowsum(ag_wt):/cols(ag_wt)
+				aux = aux, aggte(ag_rif, ag_wt)
+			}
 		}
+		_editmissing(sumwgt,0)
+		//# Bookmark #1 Uncertain if this is the best way to fix this, but right now gives best results
+		sumwgt=J(rows(sumwgt),1,colsum(sumwgt))
+		aux = aggte(aux,sumwgt ), aux
 		// get table elements		
 		make_tbl(aux ,bb,VV,clvar_, wboot_ ,VV1, cband, ci, reps, wbtype, citype)
 	}	
@@ -972,17 +1129,14 @@ void makerif2(string scalar rifgt_ , rifwt_ , wgt_, agg,
 
 	if (agg=="calendar") {
 		// i groups j time
-		aux =J(rows(rifwt),0,.)
-		coleqnm=""
-		ind_wt=colsum(abs(rifgt))
-
+		sumwgt=aux =J(rows(rifwt),0,.)
+		coleqnm="CAverage "
+		ind_wt=colsum(abs(rifgt))		
 		for(h=1;h<=cols(tlvl);h++){
 			k=0
 			flag=0
 			ind_gt=J(1,0,.)
-			//ind_wt=J(1,0,.)	
 			/// ag_wt=J(rows(rifwt),0,.)
- 
 			for(i=1;i<=cols(glvl);i++) {
 				for(j=1;j<=cols(tlvl);j++) {
 					k++
@@ -990,49 +1144,54 @@ void makerif2(string scalar rifgt_ , rifwt_ , wgt_, agg,
 						//ag_rif=ag_rif, rifgt[.,k]
 						//ag_wt =ag_wt , rifwt[.,i]
 						ind_gt=ind_gt,k
-						ind_wt=ind_wt,i						
+						//ind_wt=ind_wt,i						
 						if (flag==0) coleqnm=coleqnm+sprintf(" T%s",strofreal(tlvl[h]))
 						flag=1
 					}
 				}
-				
 			}
+			
 			if (flag==1) {
 				ag_rif = rifgt[.,ind_gt]
-				ag_wt  = rifwt[.,ind_gt]			
-				aux = aux, aggte(ag_rif, ag_wt)
-			}
-		}	
+				ag_wt  = rifwt[.,ind_gt]
+				///sumwgt = sumwgt, rowsum(ag_wt):/cols(ag_wt)
+ 				aux = aux, aggte(ag_rif, ag_wt)
+ 			}
+		}
+		///_editmissing(sumwgt,0)
+		aux = aggte(aux, J(rows(aux),cols(aux),1) ), aux
 		// get table elements		
 		make_tbl(aux ,bb,VV,clvar_, wboot_ ,VV1, cband, ci, reps, wbtype, citype )
 	}
 	
 	if (agg=="event") {
 		// i groups j time
-		real matrix evnt_lst
-		evnt_lst=event_list(glvl,tlvl)
-		coleqnm=""
+		real matrix evnt_lst, iit
+		evnt_lst=event_list(glvl,tlvl,wndw)
+		coleqnm="Pre_avg Post_avg "
 		ind_wt=colsum(abs(rifgt))
-
-		aux =J(rows(rifwt),0,.)
+		sumwgt = aux =J(rows(rifwt),0,.)
+		iit = J(1,0,.)
+		if (lng==1) {
+			lng=max( evnt_lst[1,2..length(evnt_lst)]-evnt_lst[1,1..(length(evnt_lst)-1)] )
+		}
 		for(h=1;h<=cols(evnt_lst);h++){
 			k=0
 			flag=0
 			ind_gt=J(1,0,.)
  			/// ag_wt=J(rows(rifwt),0,.)
- 
 			for(i=1;i<=cols(glvl);i++) {
 				for(j=1;j<=cols(tlvl);j++) {
 					k++					
-					if ( ( (glvl[i]+evnt_lst[h])==tlvl[j] )  & (ind_wt[k]!=0) ) {	
+					if ( ((glvl[i]+evnt_lst[h])==tlvl[j])  & (ind_wt[k]!=0)  ) {	
 						//ag_rif=ag_rif, rifgt[.,k]
 						//ag_wt =ag_wt , rifwt[.,i]
 						ind_gt=ind_gt,k
-						ind_wt=ind_wt,i							
+						//ind_wt=ind_wt,i							
 						if (flag==0) {
-							if (evnt_lst[h]< 0) coleqnm=coleqnm+sprintf(" T%s" ,strofreal(evnt_lst[h]))
-							if (evnt_lst[h]==0) coleqnm=coleqnm+" T+0"
-							if (evnt_lst[h]> 0) coleqnm=coleqnm+sprintf(" T+%s",strofreal(evnt_lst[h]))
+							if (evnt_lst[h]< 0) coleqnm=coleqnm+sprintf(" Tm%s" ,strofreal(abs(evnt_lst[h]-lng)))
+							if (evnt_lst[h]==0) coleqnm=coleqnm+" Tp0"
+							if (evnt_lst[h]> 0) coleqnm=coleqnm+sprintf(" Tp%s",strofreal(abs(evnt_lst[h])))
 						}
 						flag=1
 					}
@@ -1042,9 +1201,18 @@ void makerif2(string scalar rifgt_ , rifwt_ , wgt_, agg,
 			if (flag==1) {
 				ag_rif = rifgt[.,ind_gt]
 				ag_wt  = rifwt[.,ind_gt]			
-				aux = aux, aggte(ag_rif, ag_wt)
-			}	
-		}	
+				//sumwgt = sumwgt, rowsum(ag_wt):/rowsum(ag_wt:!=0)
+				aux    = aux, aggte(ag_rif, ag_wt )
+				iit    = iit , evnt_lst[h]>=0
+			}
+		}
+		//_editmissing(sumwgt,0)
+		//sumwgt = J(rows(aux),cols(aux),1)
+		
+		aux =  aggte(select(aux,iit:==0), J(rows(aux),cols(aux)-sum(iit),1) ),
+		       aggte(select(aux,iit)    , J(rows(aux),sum(iit),1) ), aux
+		/// NEW line for Missing 
+		_editmissing(aux,0)	
 		// get table elements		
 		make_tbl(aux ,bb,VV,clvar_, wboot_ ,VV1, cband, ci, reps, wbtype, citype)
 	}

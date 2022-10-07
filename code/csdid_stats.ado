@@ -1,4 +1,5 @@
-*! v1.57 FRA Group Agg. Using weights for ALL not some groups
+*! v1.6 FRA Changes how long2 looks and saves rifs
+* v1.57 FRA Group Agg. Using weights for ALL not some groups
 * v1.56 FRA When there is no pretreat
 * v1.55 FRA Reports Group,calendar,event averages
 * v1.55 FRA allows for more periods
@@ -139,18 +140,23 @@ program csdid_est, rclass
 							window(str)             /// 
 							pointwise    			///
 							post                    ///
-							from(int 0) ] [estore(name) esave(name) replace]
+							from(int 0) save]       ///
+							[estore(name) esave(name) replace ]
 	
 	local  `:char _dta[note11]'
+	
+	local sav = 0
+	if "`save'"!="" local sav =1
 	
 	if "`cmd'"!="csdid" {
 	    display "This was not created after csdid"
 		exit 10
 	}
 	
-	forvalues i = 3/10 {
+	forvalues i = 3/12 {
 		local  `:char _dta[note`i']'
 	}
+	
 	
 ** checking Notes 7 and 8
 	if "`:word 1 of `rifgt''"=="see_char" {
@@ -224,14 +230,7 @@ program csdid_est, rclass
 	if "`seed'"!="" set seed `seed'
 	
 	//////////////////////////////////
-	*matrix `cband'=1
-	** New idea. Hacerlo todo desde makerif	
-	*mata:makerif("`rifgt'","`rifwt'","__wgt__","`b'","`v'","`cluster' ")
-	
-	/*if "`cluster'"!= "" {
-		local clvar `cluster'
-	}*/
-	
+ 
 	
 	local ci = `level'/100
 	
@@ -241,13 +240,15 @@ program csdid_est, rclass
 		if "`citype'"=="uniform"   local citp = 1
 		if "`citype'"=="pointwise" local citp = 2
 	}
-		
-	noisily mata: makerif2("`rifgt'" , "`rifwt'","`agg'",  ///
+	local lg = 0
+	display in w "`if 	 `typebase' == long2  local lg = 1'"
+	if 	"`typebase'"=="long2" local lg = 1
+	qui:mata: makerif2("`rifgt'" , "`rifwt'","`agg'",  ///
 						    "`glvls'","`tlvls'", ///
 							"`b1'",  /// `b2' `b3' `b4' `b5' `b6'
 							"`s1'",  ///  `s2' `s3' `s4' `s5' `s6'
 							"`clvar' ", "`vcetype' ", "`cband'", /// 
-									`ci', `reps', `wbtype', "`window'", `citp', `from')
+									`ci', `reps', `wbtype', "`window'", `citp', `from', `lg', `sav')
 	tempname b V
 	matrix `b' = `b1'
 	matrix `V' = `s1'
@@ -281,6 +282,7 @@ program csdid_est, rclass
 	adde local cmdline   estat `agg'
 	adde local estat_cmd csdid_estat
 	adde local agg		 `agg'
+	adde local typebase	 `typebase'
 	adde scalar neqr =   `neqr'
 	local `:char _dta[note5]'
 	local `:char _dta[note4]'    
@@ -376,7 +378,7 @@ mata:
 void makerif2(string scalar rifgt_ , rifwt_ , agg, 
 				glvl_, tlvl_, bb_, ss_, clvar_, wboot , cband_,
 				real scalar ci, reps, wbtype, 
-				string scalar wnw , real scalar citype, from) {	
+				string scalar wnw , real scalar citype, from, real scalar lng, sav) {	
 	// wnw Window				
     real matrix rifgt , rifwt, wgt, t0, glvl, tlvl
 	real scalar i,j,k,h, wndw
@@ -547,6 +549,11 @@ void makerif2(string scalar rifgt_ , rifwt_ , agg,
 		ind_wt=colsum(abs(rifgt))
 		sumwgt = aux =J(rows(rifwt),0,.)
 		iit = J(1,0,.)
+		
+		if (lng==1) {
+			lng=max( evnt_lst[1,2..length(evnt_lst)]-evnt_lst[1,1..(length(evnt_lst)-1)] )
+		}
+ 
 		for(h=1;h<=cols(evnt_lst);h++){
 			k=0
 			flag=0
@@ -561,7 +568,7 @@ void makerif2(string scalar rifgt_ , rifwt_ , agg,
 						ind_gt=ind_gt,k
 						//ind_wt=ind_wt,i							
 						if (flag==0) {
-							if (evnt_lst[h]< 0) coleqnm=coleqnm+sprintf(" Tm%s" ,strofreal(abs(evnt_lst[h])))
+							if (evnt_lst[h]< 0) coleqnm=coleqnm+sprintf(" Tm%s" ,strofreal(abs(evnt_lst[h]-lng)))
 							if (evnt_lst[h]==0) coleqnm=coleqnm+" Tp0"
 							if (evnt_lst[h]> 0) coleqnm=coleqnm+sprintf(" Tp%s",strofreal(abs(evnt_lst[h])))
 						}
@@ -604,10 +611,15 @@ void makerif2(string scalar rifgt_ , rifwt_ , agg,
 		}		
 	}
 	
+	if (sav==1) {
+		_st_addvar("double",tokens(coleqnm))
+		st_store(.,tokens(coleqnm),aux)
+	}
+	
 }
 
 void make_tbl(real matrix rif,bb,VV, clv , string  scalar wboot, cband_,
-				real scalar ci, reps, wbtype, make_tbl){
+				real scalar ci, reps, wbtype, citype){
 	real matrix aux, nobs, clvar
 	real scalar cln
 	bb=mean(rif)
@@ -625,7 +637,7 @@ void make_tbl(real matrix rif,bb,VV, clv , string  scalar wboot, cband_,
 	real matrix cband
 	// wboot no cluster
 	if (wboot!=" ") {
-		mboot(rif,bb, VV, cband, clv, ci, reps, wbtype, make_tbl)
+		mboot(rif,bb, VV, cband, clv, ci, reps, wbtype, citype)
 		st_matrix(cband_,cband)
 	}
  } 
@@ -772,7 +784,7 @@ real vector qtp(real matrix y, real scalar p) {
     
 	return(qq)
 }
- 
+ //mboot(              rif,      bb, VV, cband, clv           , ci, reps, wbtype, make_tbl)
 void mboot(real matrix rif,mean_rif, vv, cband, string scalar clv,
 			real scalar ci, reps, wbtype, citype) {
     //, real scalar reps, bwtype, ci 
@@ -822,3 +834,4 @@ void mboot(real matrix rif,mean_rif, vv, cband, string scalar clv,
 
 end
 
+/// ADD a function to recreate this using RIFS. Interesting...

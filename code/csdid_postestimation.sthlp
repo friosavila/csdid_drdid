@@ -1,5 +1,5 @@
 {smcl}
-
+{* *! version 2  8/4/2022 Finally A version}{...}
 {title:{cmd:csdid postestimation}: Post-estimation utilities for CSDID}
 
 {it:{bf:Aggregations and Pretrend testing}}
@@ -62,6 +62,8 @@ to periods between T#1 and T#2, inclusive. For example estat cevent , window(0 0
 {synoptline}
 
 {synopt:{opt post}}Request posting the results in e().{p_end}
+
+{synopt:{opt save}}Request saving the RIF associated with the requested aggregation as a variable in the file. They can be used to produce other aggregations based on the RIFs See example.{p_end}
 {synoptline}
 
 {syntab:{bf: Standard Error Options}}
@@ -89,8 +91,7 @@ avilable.{p_end}
 {synopt:rseed(#)}Specifies the seed for the WB procedure. Use for replication purposes.{p_end}
 
 {synoptline}
-
-
+ 
 {title:{cmd:csdid_plot}: Plots after csdid, csdid_estat and csdid_stats}
 
 {cmd:csdid} also comes with its own command to produce simple plots for all aggregations. It automatically recognizes last 
@@ -117,6 +118,8 @@ estimated results left by {cmd: csdid}, {cmd: csdid_estat} and {cmd: csdid_stats
 {synopt:group(#)}When using {cmd:csdid_plot} after {cmd:csdid} or after {cmd:csdid_stats attgt}, one can produce dynamic type
 plots for each group/cohort. In that case, one needs to indicate which {it:group(#)} to plot.
 
+{pstd}Other {cmd:twoway graph} options are allowed.
+
 {marker remarks}{...}
 {title:Remarks}
 
@@ -127,6 +130,34 @@ across time, or dynamic effects, (event plot). It has, however, limited flexibil
 If you want to further modify this figure, I suggest using the community contributed command {help addplot} by Benn Jan.
 If you do, please cite his software. See references section.
 
+ 
+{title:{cmd:csdid_rif}: Module to create table results based on the var}
+
+{pstd}{cmd:csdid_rif} is a command that can be used to create further tables based on RIF-variables in your dataset. For example, using {cmd:csdid_stats event}, one can save the event related RIF variables, as well as the simple Average ATT RIF. One can then use {cmd:csdid_rif} to create a table based on all these information.{p_end}
+
+{marker syntax}{...}
+{title:Syntax}
+
+{phang}{cmd:csdid_rif} [varlist] [if in], [options]
+
+{synopthdr:Options}
+{synoptline}
+
+{synopt:cluster(varname)}Request estimating Clustered Standard errors. Default is Robust Standard errors{it:name}{p_end}
+
+{synopt:level(#)}Indicates the CI level to be used. Default 95{p_end}
+
+{synopt:wboot}Request the estimation of Wildbootstrap SE with Uniform Confidence Intervals. Can be combined with Cluster option{p_end}
+
+{synopt:reps(#)}Requests # replications used for the Bootstrap. Default 999.{p_end}
+
+{synopt:seed(#)}Provides a Seed for replication purposes{p_end}
+
+{marker remarks}{...}
+{title:Remarks}
+
+{pstd}This command can also be used with any other output that provides the RIF functions. After the command is run, it will leave behind information in e(){p_end}
+   
  
 {marker examples}{...}
 {title:Examples}
@@ -172,11 +203,33 @@ If you do, please cite his software. See references section.
 
 {phang}{stata use _rif_, clear}
 
+{pstd}Dynamic Effects with Asymptotic Standard errors{p_end}
 {phang}
 {stata csdid_stats event}
 
+{pstd}Dynamic Effects with Wbootstrap Std Err{p_end}
 {phang}
 {stata csdid_stats event, wboot}
+
+{pstd}Saving RIFs for all aggregations{p_end}
+
+{phang}
+{stata csdid_stats event, save}
+
+{phang}
+{stata csdid_stats calendar, save}
+
+{phang}
+{stata csdid_stats group, save}
+
+{pstd}Producing Tables Avg ATTs, using asymptotic Std Err{p_end}
+{phang}
+{stata csdid_rif Pre_avg Post_avg CAverage GAverage}
+
+{pstd}Producing Tables Avg ATTs, using Wboot Std Err and uniform Confidence Intervals{p_end}
+{phang}
+{stata csdid_rif Pre_avg Post_avg CAverage GAverage, wboot}
+{p_end}
 
 {marker authors}{...}
 {title:Authors}
@@ -225,6 +278,8 @@ and Brantly Callaway, 2021.
 
 {pstd}This command was built using the DID command from R as benchmark, originally written by Pedro Sant'Anna and Brantly Callaway. {p_end}
 
+{pstd} Some of the additional tools and options are my attempt to provide things R version doesnt have yet. {p_end}
+
 {pstd}Many thanks to Pedro for helping me understand the inner workings of the estimator.{p_end}
 
 {pstd}Thanks also to Enrique, who helped with the display set up, plus other questions that pop up while working on this{p_end}
@@ -232,5 +287,5 @@ and Brantly Callaway, 2021.
 {title:Also see}
 
 {p 7 14 2}
-Help:  {help drdid}, {help csrdid}, {help csdid postesimation}, {help xtdidregress} {p_end}
+Help:  {help drdid}, {help csdid}, {help csdid postestimation}, {help xtdidregress} {p_end}
 

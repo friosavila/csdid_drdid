@@ -48,7 +48,7 @@ is that it always remains treated. {p_end}
 {synopt:} If there are any groups treated before the first available period in the sample, those observations are 
 considered always treated, and are excluded from the sample. {p_end}
 
-{synopt:} For every cohort in {it:gvar} there should be a period in {it:time} otherwise, the command will produce an error. {p_end}
+{synopt:} For every cohort in {it:gvar} there should be a period in {it:time} otherwise, the command will produce an error. Also, you should have data for the period before treatment. For example, if data is annual, and observations were treated in 2010, you need to have data for this group in 2009. Otherwise ATTGT's cannot be identified.{p_end}
 
 {synopt:} When using panel data, observations cannot change cohort across time. {p_end}
 
@@ -61,6 +61,9 @@ than short-gaps.{p_end}
 {synopt:{opt long2}}For periods before treatment, this option requests the estimation of Long gaps, rather 
 than short-gaps. This is similar to base universal. (inverse sign from long){p_end}
 
+{synopt:{opt asinr}}In R's version (DID), pre-treatment ATTGT's using not-yet-treated groups are estimated using all cohorts not-yet treated. 
+In Stata, the default is to use all cohorts that were not treated at time G. Both options are valid, but if one wants to replicate R results, -asinr- should be used.{p_end}
+
 {synoptline}
 {syntab:{bf: Estimation Method} }
 
@@ -70,7 +73,7 @@ It estimates every feasible 2x2 DiD design available in the selected sample.
 {p_end}
 
 {phang}
-In all cases, base-period covariates are used for the estimation of the propensity score and outcome regressions.
+In all cases, the earliest-period covariates are used for the estimation of the propensity score and outcome regressions. This is the base period for all post treatment ATTGTs and T for all pre-treatment ATTGTs.
 {p_end}
 
 {phang}
@@ -80,17 +83,18 @@ To specify a particular syntax, one should use the option {cmd: method({it:metho
 
 {synopthdr}
 {synoptline}
-{synopt:drimp (default)}Sant’Anna and Zhao (2020) Improved doubly robust DiD estimator based on 
+{synopt:drimp}Sant’Anna and Zhao (2020) Improved doubly robust DiD estimator based on 
 inverse probability of tilting and weighted least squares. {p_end}
 
-{synopt:dripw}Sant’Anna and Zhao (2020) doubly robust DiD estimator based on stabilized 
-inverse probability weighting and ordinary least squares{p_end}
+{synopt:dripw (default)}Sant’Anna and Zhao (2020) doubly robust DiD estimator based on stabilized 
+inverse probability weighting and ordinary least squares. {p_end}
 
-{synopt:reg}Outcome regression DiD estimator based on ordinary least squares {p_end}
+{synopt:reg}Outcome regression DiD estimator based on ordinary least squares. When no covariates are specified, this 
+method is used as default, because it provides the same point estimates and standard errors. {p_end}
 
 {synopt:stdipw}Inverse probability weighting DiD estimator with stabilized weights{p_end}
 
-{synopt:ipw}Abadie (2005) inverse probability weighting DiD estimator{p_end}
+{synopt:ipw}Abadie (2005) inverse probability weighting DiD estimator. May not perform well with unbalanced panel data{p_end}
 
 {synopt:rc1}In combination with the methods {cmd drimp} and {cmd dripw}, this option request the doubly robust
 but not locally efficient repeated crossection estimators. Not available when using panel data. 
@@ -169,7 +173,7 @@ period first treated, across all cohorts.{p_end}
 that determines all relevant designs and aggregates them. {p_end}
  
 {pstd}As in -drdid-, the underlying assumption is that all covariates are time constant. When using panel data, 
-even if covariates are time-varying, only the base-period values are used for the estimation. 
+even if covariates are time-varying, only the base-period (earlier-period) values are used for the estimation. 
 {p_end}
  
 {pstd}
@@ -199,9 +203,10 @@ using current period as the post period.
 For ATT's before the treatment took place, the command uses T-1 as the base period (or Pre-period), and T as the post-period. This corresponds to the {cmd short} pre-treatment gap.
 {p_end}
 {pstd}
-When {cmd long} gaps are requested, the ATT's before treatment took place uses T-1 as base period, and G-1 as the post period. where G is the first period a unit received treatment. 
+When {cmd: long} gaps are requested, the ATT's before treatment took place uses T-1 as base period, and G-1 as the post period. where G is the first period a unit received treatment. One can also use {cmd long2}, which provides the same estimates but flipped sign. This is the closest to standard event study effects. The usually ommited parameter (T-1) is not calculated with csdid.
 {p_end}
 
+ 
 {pstd}
 For ATT's after the treatment took place, the command uses G-1 as the base period (pre-treatment period) and T as the post-period.
 {p_end}
@@ -233,7 +238,7 @@ estimate the model using Repeated Crossection estimators. See the example below 
 Even if WBootstrap SE are requested, asymptotic SE are stored in e().
 {p_end}
 {pstd}
-Each succesful iteration is represnted by a ".", whereas an "x" indicates for some ATT(G,T), the estimation failed.
+Each succesful iteration is represented by a ".", whereas an "x" indicates for some ATT(G,T), the estimation failed.
 
 {marker post_estimation}{...}
 {title:Post Estimaton}
@@ -249,6 +254,10 @@ Each succesful iteration is represnted by a ".", whereas an "x" indicates for so
 {p_end}
 
 {phang}{cmd: csdid_plot} For the creating plots of the results.
+{p_end}
+
+{phang}{cmd: csdid_rif} This is a multiuse command. It can be used to produce results, including wildbootstrap tables, based on RIFs.
+
 {p_end}
 
 {marker examples}{...}

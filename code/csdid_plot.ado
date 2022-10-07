@@ -1,4 +1,5 @@
-*! v1.2  Compatible with new Group Averages
+*! v1.21 other Graph options
+* v1.2  Compatible with new Group Averages
 * v1.1  Problem with TM TP
 /*capture program drop  csdid_plot
 capture program drop  adds
@@ -38,7 +39,7 @@ end
 program csdid_plot
 	syntax, [style(passthru) title(passthru) name(passthru) Group(str) ///
 							 ytitle(passthru) xtitle(passthru)	///
-							 legend(passthru) agg(str) ]
+							 legend(passthru) agg(str) * ]
 	tempvar mm 
 	tempvar kk
 	
@@ -74,7 +75,7 @@ program csdid_plot
 		csdid_default, `options' `style'
 		
 		csdid_plot_event `kk'  `mm1'  `mm5' `mm6'	, ///
-					style(`r(style)') `title' `name'  `ytitle'	`xtitle' `legend'	   
+					style(`r(style)') `title' `name'  `ytitle'	`xtitle' `legend'	`options'    
 		*drop `mm'? 
 	}
 	
@@ -102,7 +103,7 @@ program csdid_plot
 		 
 		csdid_default, `options' `style'
 		csdid_plot_group `k2'  `mm1'  `mm5' `mm6'	, ///
-					style(`r(style)')	  `title' `name'  `ytitle'	`xtitle' `legend'	   
+					style(`r(style)')	  `title' `name'  `ytitle'	`xtitle' `legend'	 `options'  
 		*drop `mm'? 
 	}
 	
@@ -130,7 +131,7 @@ program csdid_plot
 		 
 		csdid_default, `options' `style'
 		csdid_plot_calendar `k2'  `mm1'  `mm5' `mm6'	, ///
-					style(`r(style)')	  `title' `name'  `ytitle'	`xtitle' `legend'		   
+					style(`r(style)')	  `title' `name'  `ytitle'	`xtitle' `legend' `options'		   
 		*drop `mm'? 
 	}
 	
@@ -180,7 +181,7 @@ program csdid_plot
 		csdid_default, `options' `style'
 		*sum `kk'  `nmm'1  `nmm'5 `nmm'6
 		csdid_plot_event `kk'  `nmm1'  `nmm5' `nmm6' , ///
-					style(`r(style)')	  `title' `name'  `ytitle'	`xtitle' `legend'		   
+					style(`r(style)')	  `title' `name'  `ytitle'	`xtitle' `legend' `options'		   
 		*drop `nmm'? 	
 		
 	}
@@ -245,7 +246,7 @@ end
  
 
 program csdid_default, rclass
-	syntax, [style(str)]
+	syntax, [style(str) *] 
 	
 	if "`style'"=="" return local style rspike
 	else             return local style `style'
@@ -256,7 +257,7 @@ end
 program csdid_plot_event 
 	syntax varlist, style(str) [title(passthru) name(passthru) ///
 								ytitle(passthru) xtitle(passthru)	///
-								legend(str) ]
+								legend(str) * ]
 	gettoken t rest:varlist
 	gettoken b rest:rest
 	gettoken ll rest:rest 
@@ -272,7 +273,7 @@ program csdid_plot_event
 		  rspike  `ll' `uu' `t'   if `t'>=0, color(%40) pstyle(p2) lw(3) || ///
 		  scatter  `b'      `t'   if `t'>=0, pstyle(p2) , ///
 		  legend(order(1 "Pre-treatment" 3 "Post-treatment") `legend' ) `xtitle' `ytitle' ///
-		  yline(0 , lp(dash) lcolor(black)) `title' `name' 
+		  yline(0 , lp(dash) lcolor(black)) `title' `name'  `options'
 	}	  
 	
 	if "`style'"=="rarea" {
@@ -281,7 +282,7 @@ program csdid_plot_event
 		  (rarea  `ll' `uu' `t'   if `t'>=0, color(%40) pstyle(p2) lw(0) ) || ///
 		  (scatter  `b'     `t'   if `t'>=0, pstyle(p2) connect(l) ), ///
 		  legend(order(1 "Pre-treatment" 3 "Post-treatment") `legend' ) `xtitle' `ytitle' ///
-		  yline(0 , lp(dash) lcolor(black))  `title' `name' 
+		  yline(0 , lp(dash) lcolor(black))  `title' `name'  `options'
 	}
 	
 	if "`style'"=="rcap" {
@@ -290,7 +291,7 @@ program csdid_plot_event
 		  (rcap `ll' `uu' `t'   if `t'>=0, color(%60) pstyle(p2) lw(1) ) || ///
 		  (scatter  `b'      `t'   if `t'>=0, pstyle(p2) connect(l) ), ///
 		  legend(order(1 "Pre-treatment" 3 "Post-treatment")  `legend') `xtitle' `ytitle' ///
-		  yline(0 , lp(dash) lcolor(black))  `title' `name'
+		  yline(0 , lp(dash) lcolor(black))  `title' `name' `options'
 	}
 	
 	if "`style'"=="rbar" {
@@ -299,15 +300,15 @@ program csdid_plot_event
 		  (rbar `ll' `uu' `t'   if `t'>=0, color(%60) pstyle(p2) lw(0) barwidth(0.5) ) || ///
 		  (scatter  `b'      `t'   if `t'>=0, pstyle(p2) connect(l) ), ///
 		  legend(order(1 "Pre-treatment" 3 "Post-treatment") `legend' ) `xtitle' `ytitle' ///
-		  yline(0 , lp(dash) lcolor(black))  `title' `name'
-	}
+		  yline(0 , lp(dash) lcolor(black))  `title' `name' `options'
+	} 
 end
 
 
 
 program csdid_plot_group
 	syntax varlist, style(str) [title(passthru) name(passthru)	///
-								ytitle(passthru) xtitle(passthru) ]
+								ytitle(passthru) xtitle(passthru) * ]
 	gettoken t rest:varlist
 	gettoken b rest:rest
 	gettoken ll rest:rest 
@@ -330,35 +331,35 @@ program csdid_plot_group
 	two   (`style'  `ll' `uu' `t'   , pstyle(p1) color(%40) lw(3) ) || ///
 		  (scatter  `b'      `t'   , pstyle(p1)    ) , ///
 		  legend(off) `xtitle'  `ytitle'  ///
-		  yline(0 , lp(dash) lcolor(black)) `title' `name' xlabel(`xlab')
+		  yline(0 , lp(dash) lcolor(black)) `title' `name' xlabel(`xlab') `options'
 	}	  
 	
 	if "`style'"=="rarea" {
 	two   (`style'  `ll' `uu' `t'   	 , pstyle(p1) color(%40) lw(0) ) || ///
 		  (scatter  `b'     `t'   	 , pstyle(p1)  ) , ///
 		  legend(off) `xtitle'  `ytitle'  ///
-		  yline(0 , lp(dash) lcolor(black)) `title' `name' xlabel(`xlab')
+		  yline(0 , lp(dash) lcolor(black)) `title' `name' xlabel(`xlab') `options'
 	}
 	
 	if "`style'"=="rcap" {
 	two   (`style'  `ll' `uu' `t'   	 , pstyle(p1) color(%40)  lw(1) ) || ///
 		  (scatter  `b'     `t'   	 , pstyle(p1)  ) , ///
 		  legend(off) `xtitle'  `ytitle'  ///
-		  yline(0 , lp(dash) lcolor(black)) `title' `name' xlabel(`xlab')
+		  yline(0 , lp(dash) lcolor(black)) `title' `name' xlabel(`xlab') `options'
 	}
 	
 	if "`style'"=="rbar" {
 	two   (`style'  `ll' `uu' `t'   	 , pstyle(p1) color(%40) lw(0) barwidth(0.5) ) || ///
 		  (scatter  `b'     `t'   	 , pstyle(p1)  ) , ///
 		  legend(off) `xtitle'  `ytitle'  ///
-		  yline(0 , lp(dash) lcolor(black)) `title' `name' xlabel(`xlab')
+		  yline(0 , lp(dash) lcolor(black)) `title' `name' xlabel(`xlab') `options'
 	}
 end
 
 
 program csdid_plot_calendar
 	syntax varlist, style(str) [title(passthru) name(passthru)	///
-								ytitle(passthru) xtitle(passthru) ]
+								ytitle(passthru) xtitle(passthru) * ]
 	gettoken t rest:varlist
 	gettoken b rest:rest
 	gettoken ll rest:rest 
@@ -382,28 +383,28 @@ program csdid_plot_calendar
 	two   (`style'  `ll' `uu' `t'   , pstyle(p1) color(%40) lw(3) ) || ///
 		  (scatter  `b'      `t'   , pstyle(p1)    ) , ///
 		  legend(off) `xtitle'  `ytitle'  ///
-		  yline(0 , lp(dash) lcolor(black)) `title' `name' xlabel(`xlab')
+		  yline(0 , lp(dash) lcolor(black)) `title' `name' xlabel(`xlab') `options'
 	}	  
 	
 	if "`style'"=="rarea" {
 	two   (`style'  `ll' `uu' `t'   	 , pstyle(p1) color(%40) lw(0) ) || ///
 		  (scatter  `b'     `t'   	 , pstyle(p1)  ) , ///
 		  legend(off) `xtitle'  `ytitle'  ///
-		  yline(0 , lp(dash) lcolor(black)) `title' `name' xlabel(`xlab')
+		  yline(0 , lp(dash) lcolor(black)) `title' `name' xlabel(`xlab') `options'
 	}
 	
 	if "`style'"=="rcap" {
 	two   (`style'  `ll' `uu' `t'   	 , pstyle(p1) color(%40)  lw(1) ) || ///
 		  (scatter  `b'     `t'   	 , pstyle(p1)  ) , ///
 		  legend(off) `xtitle'  `ytitle'  ///
-		  yline(0 , lp(dash) lcolor(black)) `title' `name' xlabel(`xlab')
+		  yline(0 , lp(dash) lcolor(black)) `title' `name' xlabel(`xlab') `options'
 	}
 	
 	if "`style'"=="rbar" {
 	two   (`style'  `ll' `uu' `t'   	 , pstyle(p1) color(%40) lw(0) barwidth(0.5) ) || ///
 		  (scatter  `b'     `t'   	 , pstyle(p1)  ) , ///
 		  legend(off) `xtitle'  `ytitle'  ///
-		  yline(0 , lp(dash) lcolor(black)) `title' `name' xlabel(`xlab')
+		  yline(0 , lp(dash) lcolor(black)) `title' `name' xlabel(`xlab') `options'
 	}
 end
 

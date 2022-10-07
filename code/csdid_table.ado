@@ -1,3 +1,4 @@
+*! v1.1 Small change on Width. Based on variable length
 program csdid_table, rclass 
 	syntax [, level(int `c(level)') noci cformat(string) sformat(string) *]
 *set trace on
@@ -13,10 +14,17 @@ program csdid_table, rclass
 	if ("`sformat'"!="") {
 			local sf `sformat'
 	}
-
+***hack to get max
+ local namelist : colname e(b)
+ local wdt=0
+ foreach i of local namelist {
+ 	if length("`i'")>`wdt' local wdt = length("`i'")+3
+ }
+ if `wdt'<15 local wdt = 12
+***
         tempname mytab z t  ll ul cimat rtab
         .`mytab' = ._tab.new, col(6) lmargin(0)
-        .`mytab'.width    13   |12    12     8         12    12
+        .`mytab'.width    `wdt'   |12    12     8         12    12
         .`mytab'.titlefmt  .     .     .   %6s       %24s     .
         .`mytab'.pad       .     2     1     0          3     3
         .`mytab'.numfmt    . %9.0g %9.0g %7.2f    %9.0g %9.0g
@@ -38,7 +46,7 @@ program csdid_table, rclass
 		matrix `rtab' = J(9, `k', .)
 		matrix `cimat'= e(cband)
 		* pvalue
-		matrix rownames `rtab' = b se t  ll ul df crit eform
+		matrix rownames `rtab' = b se t p ll ul df crit eform
 		matrix colnames `rtab' = `namelist'
 		forvalues i = 1/`k' {
 		    local kxc: word `i' of `eqlist'
