@@ -1,6 +1,7 @@
  
 * Next step Integrate all into csdid.mata <- so Do not need to play with many files
-*! v1.7  by FRA. Changes on Datacheks. This should avoid time gaps problems.
+*! v1.71  by FRA. adds weights back
+* v1.7  by FRA. Changes on Datacheks. This should avoid time gaps problems.
 * Adds asinr for pretreatmetn
 * adds version
 * Need to add Checks for Covariates and variables.
@@ -138,11 +139,11 @@ program csdid, sortpreserve eclass
 		
 		///version checker
 		
-		syntax [anything(everything)], [* version]
+		syntax [anything(everything)] [iw aw pw], [* version]
 
 		if  "`version'"!="" {
-			display "version: 1.7"
-			addr scalar version = 1.7
+			display "version: 1.71"
+			addr scalar version = 1.71
 			exit
 		}
 		
@@ -153,7 +154,7 @@ program csdid, sortpreserve eclass
 			*exit 101
 		}
 		if _rc==0 {
-			if r(version)<1.7 			display in red "Program DRDID is outdated. Please update" as text
+			if r(version)<1.71 			display in red "Program DRDID is outdated. Please update" as text
 			*exit 101
 		}
 
@@ -377,7 +378,10 @@ program csdid_r, sortpreserve eclass
 							dryrun					/// for testing
 							asinr					/// For pretreatment
 							]  // This allows other estimators
-				
+	
+	** Weight correction
+	*if "`weight'"!="" local weight iw
+							
 	marksample touse
 	** First determine outcome and xvars
 	gettoken y xvar:varlist

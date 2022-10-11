@@ -1,4 +1,5 @@
-*! Ver 1.7 adds version for easier update
+*! Ver 1.71 bug with weights
+* Ver 1.7 adds version for easier update
 * Ver 1.68 Bug with drimp
 * Ver 1.67 Bug with IPW 
 * Ver 1.66 Bug with binit, skip fixed
@@ -63,11 +64,11 @@ program define drdid, eclass byable(onecall)
                 exit
         }
 		
-		syntax [anything(everything)], [* version]
+		syntax [anything(everything)] [iw pw aw], [* version]
 		/**Version**/
 		if   "`version'"!="" {
-			display "version: 1.7"
-			addr scalar version = 1.7
+			display "version: 1.71"
+			addr scalar version = 1.71
 			exit
 		}
 		
