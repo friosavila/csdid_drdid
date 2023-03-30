@@ -1,3 +1,11 @@
+Thanks for visiting
+I'm moving this repository to its new home
+
+https://github.com/friosavila/stpackages/tree/main/csdid
+https://github.com/friosavila/stpackages/tree/main/drdid
+
+Thank you!
+
 # DRDID: Doubly Robust Difference-in-Differences Estimators for Stata
 ## Version 0.1 (2021-05-22)
 This version is a beta release. If you find an error, please [submit an issue](https://github.com/friosavila/csdid_drdid/issues/new/choose). 
