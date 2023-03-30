@@ -1,8 +1,10 @@
 Thanks for visiting
 I'm moving this repository to its new home
 
+for csdid:
 https://github.com/friosavila/stpackages/tree/main/csdid
 
+for drdid:
 https://github.com/friosavila/stpackages/tree/main/drdid
 
 Thank you!
